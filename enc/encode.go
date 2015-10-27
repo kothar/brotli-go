@@ -1,3 +1,4 @@
+// Brotli compression library bindings for the encoder
 package enc
 
 /*
@@ -98,8 +99,8 @@ func (p *BrotliParams) SetLgblock(value int) {
 func CompressBuffer(params *BrotliParams, inputBuffer []byte, encodedBuffer []byte) ([]byte, error) {
 	inputLength := len(inputBuffer)
 	// TODO determine maximum block overhead needed
-	if len(encodedBuffer) < inputLength+100 {
-		encodedBuffer = make([]byte, inputLength+100)
+	if len(encodedBuffer) < inputLength*2 {
+		encodedBuffer = make([]byte, inputLength*2)
 	}
 	if params == nil {
 		params = NewBrotliParams()
