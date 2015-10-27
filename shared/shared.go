@@ -9,6 +9,6 @@ import "C"
 
 import "unsafe"
 
-func GetDictionary() []byte {
-	return C.GoBytes(unsafe.Pointer(&C.sharedBrotliDictionary[0]), 122784)
+func GetDictionary() unsafe.Pointer {
+	return unsafe.Pointer(&C.sharedBrotliDictionary[0])
 }

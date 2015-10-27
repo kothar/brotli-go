@@ -16,7 +16,7 @@ import (
 
 func init() {
 	// Set up the default dictionary from the data in the shared package
-	C.decodeBrotliDictionary = toC(shared.GetDictionary())
+	C.decodeBrotliDictionary = (*C.uint8_t)(shared.GetDictionary())
 }
 
 // Decompress a Brotli-encoded buffer. Uses decodedBuffer as the destination buffer unless it is too small,

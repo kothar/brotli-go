@@ -18,7 +18,7 @@ import (
 
 func init() {
 	// Set up the default dictionary from the data in the shared package
-	C.kBrotliDictionary = toC(shared.GetDictionary())
+	C.kBrotliDictionary = (*C.uint8_t)(shared.GetDictionary())
 }
 
 type Mode int
