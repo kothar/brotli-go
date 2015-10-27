@@ -24,7 +24,7 @@ func TestRoundtrip(T *testing.T) {
 	s := []byte("Hello Hello Hello, Hello Hello Hello")
 	T.Logf("Original: %s\n", s)
 
-	params := enc.NewParams()
+	params := enc.NewBrotliParams()
 	buffer1 := make([]byte, len(s)+100)
 	encoded, cerr := enc.CompressBuffer(params, s, buffer1)
 	if cerr != nil {
