@@ -4,7 +4,7 @@
 
 typedef struct BrotliParams {
 
-  enum {
+  enum Mode {
     // Default compression mode. The compressor does not know anything in
     // advance about the properties of the input.
     MODE_GENERIC = 0,
