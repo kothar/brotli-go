@@ -62,8 +62,6 @@ TODO
 
 * I haven't implemented stream compression yet - it will need a wrapper for the C++ classes
 
-* The parameters for compression are hardcoded to the defaults - accessor methods to change them need adding to enc.Params
-
 License
 ---
 
