@@ -10,5 +10,5 @@ import "C"
 import "unsafe"
 
 func GetDictionary() unsafe.Pointer {
-	return unsafe.Pointer(&C.sharedBrotliDictionary[0])
+	return unsafe.Pointer(&C.sharedBrotliDictionary)
 }

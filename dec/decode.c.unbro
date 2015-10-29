@@ -1510,7 +1510,7 @@ postReadDistance:
             int transform_idx = word_id >> shift;
             offset += word_idx * i;
             if (transform_idx < kNumTransforms) {
-              const uint8_t* word = &decodeBrotliDictionary[offset];
+              const uint8_t* word = &kBrotliDictionary[offset];
               int len = i;
               if (transform_idx == 0) {
                 memcpy(&s->ringbuffer[pos], word, (size_t)len);

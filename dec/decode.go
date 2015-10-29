@@ -3,7 +3,8 @@ package dec
 /*
 #include "./decode.h"
 
-uint8_t* decodeBrotliDictionary;
+typedef uint8_t dict[122784];
+dict* decodeBrotliDictionary;
 */
 import "C"
 
@@ -16,7 +17,7 @@ import (
 
 func init() {
 	// Set up the default dictionary from the data in the shared package
-	C.decodeBrotliDictionary = (*C.uint8_t)(shared.GetDictionary())
+	C.decodeBrotliDictionary = (*C.dict)(shared.GetDictionary())
 }
 
 // Decompress a Brotli-encoded buffer. Uses decodedBuffer as the destination buffer unless it is too small,

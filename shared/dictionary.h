@@ -18,7 +18,7 @@
 #ifndef BROTLI_DEC_DICTIONARY_H_
 #define BROTLI_DEC_DICTIONARY_H_
 
-#include "./types.h"
+#include "../dec/types.h"
 
 #if defined(__cplusplus) || defined(c_plusplus)
 extern "C" {
