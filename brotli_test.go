@@ -10,9 +10,21 @@ import (
 )
 
 func TestSimpleString(T *testing.T) {
-	T.Log("Compressing test string")
-	s := []byte("Hello Hello Hello, Hello Hello Hello")
-	T.Logf("Original: %s\n", s)
+	testCompress([]byte("Hello Hello Hello, Hello Hello Hello"), T)
+}
+
+func TestShortString(T *testing.T) {
+	s := []byte("The quick brown fox")
+	l := len(s)
+
+	// Brotli will not compress arrays shorter than 3 characters
+	for ; l > 3; l-- {
+		testCompress(s[:l], T)
+	}
+}
+
+func testCompress(s []byte, T *testing.T) {
+	T.Logf("Compressing: %s\n", s)
 
 	params := enc.NewBrotliParams()
 	buffer1 := make([]byte, len(s)*2)
@@ -20,19 +32,16 @@ func TestSimpleString(T *testing.T) {
 	if cerr != nil {
 		T.Error(cerr)
 	}
-	T.Logf("Compressed: %v\n", encoded)
 
 	buffer2 := make([]byte, len(s))
 	decoded, derr := dec.DecompressBuffer(encoded, buffer2)
 	if derr != nil {
 		T.Error(derr)
 	}
-	T.Logf("Decompressed: %s\n", decoded)
 
 	if !bytes.Equal(s, decoded) {
+		T.Logf("Decompressed: %s\n", decoded)
 		T.Error("Decoded output does not match original input")
-	} else {
-		T.Log("Decoded output matches original input")
 	}
 }
 
