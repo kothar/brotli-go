@@ -1,24 +1,25 @@
-/* Copyright 2013 Google Inc. All Rights Reserved.
+// Copyright 2013 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Collection of static dictionary words.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
-
-/* Collection of static dictionary words. */
-
-#ifndef BROTLI_DEC_DICTIONARY_H_
-#define BROTLI_DEC_DICTIONARY_H_
+#ifndef BROTLI_ENC_DICTIONARY_H_
+#define BROTLI_ENC_DICTIONARY_H_
 
 #include "../dec/types.h"
+
+// No namespace, use same identifier as for the C decoder.
 
 #if defined(__cplusplus) || defined(c_plusplus)
 extern "C" {
@@ -32,7 +33,7 @@ static const int kBrotliDictionaryOffsetsByLength[] = {
  115968, 118528, 119872, 121280, 122016,
 };
 
-static const uint8_t kBrotliDictionarySizeBitsByLength[] = {
+static const int kBrotliDictionarySizeBitsByLength[] = {
   0,  0,  0,  0, 10, 10, 11, 11, 10, 10,
  10, 10, 10,  9,  9,  8,  7,  7,  8,  7,
   7,  6,  6,  5,  5,
@@ -45,4 +46,4 @@ static const int kBrotliMaxDictionaryWordLength = 24;
 }    /* extern "C" */
 #endif
 
-#endif  /* BROTLI_DEC_DICTIONARY_H_ */
+#endif  // BROTLI_ENC_DICTIONARY_H_
