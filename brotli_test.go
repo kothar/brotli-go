@@ -1,12 +1,12 @@
-package brotli
+package main
 
 import (
 	"bytes"
 	"io/ioutil"
 	"testing"
 
-	"github.com/kothar/brotli-go/dec"
-	"github.com/kothar/brotli-go/enc"
+	"gopkg.in/kothar/brotli-go.v0/dec"
+	"gopkg.in/kothar/brotli-go.v0/enc"
 )
 
 func TestSimpleString(T *testing.T) {

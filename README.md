@@ -9,14 +9,21 @@ Usage
 To use the bindings, you just need to import the enc or dec package and call the Go wrapper 
 functions `enc.CompressBuffer` or `dec.DecompressBuffer`
 
+~~~
+import (
+	"gopkg.in/kothar/brotli-go.v0/dec"
+	"gopkg.in/kothar/brotli-go.v0/enc"
+)
+~~~
+
 From the tests:
 ~~~
 import (
 	"bytes"
 	"testing"
 
-	"github.com/kothar/brotli-go/dec"
-	"github.com/kothar/brotli-go/enc"
+	"gopkg.in/kothar/brotli-go.v0/dec"
+	"gopkg.in/kothar/brotli-go.v0/enc"
 )
 
 func TestRoundtrip(T *testing.T) {
@@ -60,7 +67,8 @@ things working with Go.
 TODO
 ---
 
-* I haven't implemented stream compression yet - it will need a wrapper for the C++ classes
+* I haven't implemented stream compression yet - it will need a wrapper for the C++ classes. For a stream decompression implementation, please take a look at
+https://github.com/dsnet/compress
 
 License
 ---
