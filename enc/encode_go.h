@@ -2,6 +2,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+static const int kMaxWindowBits = 24;
+static const int kMinWindowBits = 10;
+static const int kMinInputBlockBits = 16;
+static const int kMaxInputBlockBits = 24;
+
 typedef struct BrotliParams {
 
   enum Mode {

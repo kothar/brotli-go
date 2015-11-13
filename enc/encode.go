@@ -7,6 +7,36 @@ package enc
 
 typedef uint8_t dict[122784];
 dict* kBrotliDictionary;
+
+// Based on BrotliCompressBufferParallel
+// https://github.com/google/brotli/blob/24469b81d604ddf1976c3e4b633523bd8f6f631c/enc/encode_parallel.cc#L233
+size_t BrotliMaxOutputSize(BrotliParams params, size_t input_size) {
+  // Sanitize params.
+  if (params.lgwin < kMinWindowBits) {
+    params.lgwin = kMinWindowBits;
+  } else if (params.lgwin > kMaxWindowBits) {
+    params.lgwin = kMaxWindowBits;
+  }
+  if (params.lgblock == 0) {
+    params.lgblock = 16;
+    if (params.quality >= 9 && params.lgwin > params.lgblock) {
+      params.lgblock = params.lgwin < 21 ? params.lgwin : 21;
+    }
+  } else if (params.lgblock < kMinInputBlockBits) {
+    params.lgblock = kMinInputBlockBits;
+  } else if (params.lgblock > kMaxInputBlockBits) {
+    params.lgblock = kMaxInputBlockBits;
+  }
+
+  size_t input_block_size = 1 << params.lgblock;
+  size_t output_block_size = input_block_size + (input_block_size >> 3) + 1024;
+
+  size_t blocks = (input_size / input_block_size) + 1;
+
+  size_t max_output_size = blocks * output_block_size;
+
+  return max_output_size;
+}
 */
 import "C"
 
@@ -93,18 +123,28 @@ func (p *BrotliParams) SetLgblock(value int) {
 	p.c.lgblock = C.int(value)
 }
 
+// Maximum output size based on
+// https://github.com/google/brotli/blob/24469b81d604ddf1976c3e4b633523bd8f6f631c/enc/encode_parallel.cc#L233
+// There doesn't appear to be any documentation of what this calculation is based on.
+func (p *BrotliParams) MaxOutputSize(inputLength int) int {
+	return int(C.BrotliMaxOutputSize(p.c, C.size_t(inputLength)))
+}
+
 // Compress a buffer. Uses encodedBuffer as the destination buffer unless it is too small,
 // in which case a new buffer is allocated.
 // Default parameters are used if params is nil.
 // Returns the slice of the encodedBuffer containing the output, or an error.
 func CompressBuffer(params *BrotliParams, inputBuffer []byte, encodedBuffer []byte) ([]byte, error) {
-	inputLength := len(inputBuffer)
-	// TODO determine maximum block overhead needed
-	if len(encodedBuffer) < inputLength*2 {
-		encodedBuffer = make([]byte, inputLength*2)
-	}
+
 	if params == nil {
 		params = NewBrotliParams()
+	}
+
+	inputLength := len(inputBuffer)
+	maxOutSize := params.MaxOutputSize(inputLength)
+
+	if len(encodedBuffer) < maxOutSize {
+		encodedBuffer = make([]byte, maxOutSize)
 	}
 
 	encodedLength := C.size_t(len(encodedBuffer))

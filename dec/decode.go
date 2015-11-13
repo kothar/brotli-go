@@ -24,18 +24,21 @@ func init() {
 // in which case a new buffer is allocated.
 // Returns the slice of the decodedBuffer containing the output, or an error.
 func DecompressBuffer(encodedBuffer []byte, decodedBuffer []byte) ([]byte, error) {
-	// TODO get decoded length
 	encodedLength := len(encodedBuffer)
-
 	var decodedSize C.size_t
-	success := C.BrotliDecompressedSize(C.size_t(encodedLength), toC(encodedBuffer), &decodedSize)
-	if success != 1 {
-		// We can't know in advance how much buffer to allocate, so we will just have to guess
-		decodedSize = C.size_t(len(encodedBuffer) * 6)
-	}
 
-	if len(decodedBuffer) < int(decodedSize) {
-		decodedBuffer = make([]byte, decodedSize)
+	// If the user has provided a sensibly size buffer, assume they know how long the output should be
+	// Otherwise try to determine the correct length from the input
+	if len(decodedBuffer) < len(encodedBuffer) {
+		success := C.BrotliDecompressedSize(C.size_t(encodedLength), toC(encodedBuffer), &decodedSize)
+		if success != 1 {
+			// We can't know in advance how much buffer to allocate, so we will just have to guess
+			decodedSize = C.size_t(len(encodedBuffer) * 6)
+		}
+
+		if len(decodedBuffer) < int(decodedSize) {
+			decodedBuffer = make([]byte, decodedSize)
+		}
 	}
 
 	// The size of the ouput buffer available
