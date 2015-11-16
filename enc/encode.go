@@ -42,6 +42,7 @@ import "C"
 
 import (
 	"errors"
+	"reflect"
 	"unsafe"
 
 	"gopkg.in/kothar/brotli-go.v0/shared"
@@ -66,6 +67,10 @@ const (
 
 type BrotliParams struct {
 	c C.struct_CBrotliParams
+}
+
+type BrotliCompressor struct {
+	c C.CBrotliCompressor
 }
 
 // Instantiates the compressor parameters with the default settings
@@ -157,4 +162,32 @@ func CompressBuffer(params *BrotliParams, inputBuffer []byte, encodedBuffer []by
 
 func toC(array []byte) *C.uint8_t {
 	return (*C.uint8_t)(unsafe.Pointer(&array[0]))
+}
+
+func NewBrotliCompressor(params *BrotliParams) *BrotliCompressor {
+	if params == nil {
+		params = NewBrotliParams()
+	}
+
+	return &BrotliCompressor{c: C.CBrotliCompressorNew(params.c)}
+}
+
+func (bp *BrotliCompressor) GetInputBlockSize() int64 {
+	return int64(C.CBrotliCompressorGetInputBlockSize(bp.c))
+}
+
+func (bp *BrotliCompressor) CopyInputToRingBuffer(input []byte) {
+	C.CBrotliCompressorCopyInputToRingBuffer(bp.c, C.size_t(len(input)), toC(input))
+}
+
+func (bp *BrotliCompressor) WriteBrotliData(isLast bool, forceFlush bool) []byte {
+	var outSize C.size_t
+	var output *C.uint8_t
+	C.CBrotliCompressorWriteBrotliData(bp.c, C.bool(isLast), C.bool(forceFlush), &outSize, &output)
+	hdr := reflect.SliceHeader{
+		Data: uintptr(unsafe.Pointer(output)),
+		Len:  int(outSize),
+		Cap:  int(outSize),
+	}
+	return *(*[]byte)(unsafe.Pointer(&hdr))
 }

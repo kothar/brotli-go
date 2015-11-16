@@ -17,7 +17,7 @@ int CBrotliCompressBuffer(CBrotliParams params,
   );
 }
 
-CBrotliCompressor CBrotliCompressorInit(CBrotliParams params) {
+CBrotliCompressor CBrotliCompressorNew(CBrotliParams params) {
   BrotliCompressor *ret = new BrotliCompressor(*((BrotliParams*) &params));
   return (CBrotliCompressor) ret;
 }

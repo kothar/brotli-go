@@ -51,7 +51,7 @@ int CBrotliCompressBuffer(CBrotliParams params,
 
 // Streaming API
 typedef void* CBrotliCompressor;
-CBrotliCompressor CBrotliCompressorInit(CBrotliParams params);
+CBrotliCompressor CBrotliCompressorNew(CBrotliParams params);
 void CBrotliCompressorFree(CBrotliCompressor cbp);
 size_t CBrotliCompressorGetInputBlockSize(CBrotliCompressor cbp);
 void CBrotliCompressorCopyInputToRingBuffer(CBrotliCompressor cbp, const size_t input_size, const uint8_t* input_buffer);
