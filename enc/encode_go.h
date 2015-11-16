@@ -2,12 +2,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static const int kMaxWindowBits = 24;
 static const int kMinWindowBits = 10;
 static const int kMinInputBlockBits = 16;
 static const int kMaxInputBlockBits = 24;
 
-typedef struct BrotliParams {
+typedef struct CBrotliParams {
 
   enum Mode {
     // Default compression mode. The compressor does not know anything in
@@ -34,13 +38,25 @@ typedef struct BrotliParams {
   bool enable_transforms;
   bool greedy_block_split;
   bool enable_context_modeling;
-} BrotliParams;
+} CBrotliParams;
 
 // Compresses the data in input_buffer into encoded_buffer, and sets
 // *encoded_size to the compressed length.
 // Returns 0 if there was an error and 1 otherwise.
-int BrotliCompressBuffer(BrotliParams params,
+int CBrotliCompressBuffer(CBrotliParams params,
                          size_t input_size,
                          const uint8_t* input_buffer,
                          size_t* encoded_size,
                          uint8_t* encoded_buffer);
+
+// Streaming API
+typedef void* CBrotliCompressor;
+CBrotliCompressor CBrotliCompressorInit(CBrotliParams params);
+void CBrotliCompressorFree(CBrotliCompressor cbp);
+size_t CBrotliCompressorGetInputBlockSize(CBrotliCompressor cbp);
+void CBrotliCompressorCopyInputToRingBuffer(CBrotliCompressor cbp, const size_t input_size, const uint8_t* input_buffer);
+void CBrotliCompressorWriteBrotliData(CBrotliCompressor cbp, const bool is_last, const bool force_flush, size_t* out_size, uint8_t** output);
+
+#ifdef __cplusplus
+}
+#endif

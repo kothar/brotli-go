@@ -10,7 +10,7 @@ dict* kBrotliDictionary;
 
 // Based on BrotliCompressBufferParallel
 // https://github.com/google/brotli/blob/24469b81d604ddf1976c3e4b633523bd8f6f631c/enc/encode_parallel.cc#L233
-size_t BrotliMaxOutputSize(BrotliParams params, size_t input_size) {
+size_t BrotliMaxOutputSize(CBrotliParams params, size_t input_size) {
   // Sanitize params.
   if (params.lgwin < kMinWindowBits) {
     params.lgwin = kMinWindowBits;
@@ -65,12 +65,12 @@ const (
 )
 
 type BrotliParams struct {
-	c C.struct_BrotliParams
+	c C.struct_CBrotliParams
 }
 
 // Instantiates the compressor parameters with the default settings
 func NewBrotliParams() *BrotliParams {
-	params := &BrotliParams{C.struct_BrotliParams{
+	params := &BrotliParams{C.struct_CBrotliParams{
 		mode:    C.MODE_GENERIC,
 		quality: 11,
 		lgwin:   22,
@@ -148,7 +148,7 @@ func CompressBuffer(params *BrotliParams, inputBuffer []byte, encodedBuffer []by
 	}
 
 	encodedLength := C.size_t(len(encodedBuffer))
-	result := C.BrotliCompressBuffer(params.c, C.size_t(inputLength), toC(inputBuffer), &encodedLength, toC(encodedBuffer))
+	result := C.CBrotliCompressBuffer(params.c, C.size_t(inputLength), toC(inputBuffer), &encodedLength, toC(encodedBuffer))
 	if result == 0 {
 		return nil, errors.New("Brotli compression error")
 	}
