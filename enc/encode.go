@@ -291,7 +291,15 @@ func (w *BrotliWriter) Close() error {
 	}
 
 	_, err = w.writer.Write(compressedData)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if v, ok := w.writer.(io.Closer); ok {
+		return v.Close()
+	}
+
+	return nil
 }
 
 // internal cgo utilities
