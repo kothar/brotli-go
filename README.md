@@ -1,58 +1,99 @@
-Go bindings for the Brotli compression library
-===
+# Go bindings for the Brotli compression library
 
-See https://github.com/google/brotli for the upstream C/C++ source
+[![GoDoc](https://godoc.org/gopkg.in/kothar/brotli-go.v0?status.svg)](https://godoc.org/gopkg.in/kothar/brotli-go.v0)
+[![Build Status](https://travis-ci.org/kothar/brotli-go.svg)](https://travis-ci.org/kothar/brotli-go)
+
+See <https://github.com/google/brotli> for the upstream C/C++ source, and
+the `VERSION.md` file to find out the currently vendored version.
 
 Usage
 ---
 
-To use the bindings, you just need to import the enc or dec package and call the Go wrapper 
+To use the bindings, you just need to import the enc or dec package and call the Go wrapper
 functions `enc.CompressBuffer` or `dec.DecompressBuffer`
 
-~~~
+Naive compression + decompression example with no error handling:
+
+```go
 import (
 	"gopkg.in/kothar/brotli-go.v0/dec"
 	"gopkg.in/kothar/brotli-go.v0/enc"
 )
-~~~
 
-From the tests:
-~~~
-import (
-	"bytes"
-	"testing"
-
-	"gopkg.in/kothar/brotli-go.v0/dec"
-	"gopkg.in/kothar/brotli-go.v0/enc"
-)
-
-func TestRoundtrip(T *testing.T) {
-	T.Log("Compressing test string")
-	s := []byte("Hello Hello Hello, Hello Hello Hello")
-	T.Logf("Original: %s\n", s)
-
-	params := enc.NewBrotliParams()
-	buffer1 := make([]byte, len(s)+100)
-	encoded, cerr := enc.CompressBuffer(params, s, buffer1)
-	if cerr != nil {
-		T.Error(cerr)
-	}
-	T.Logf("Compressed: %v\n", encoded)
-
-	buffer2 := make([]byte, len(s))
-	decoded, derr := dec.DecompressBuffer(encoded, buffer2)
-	if derr != nil {
-		T.Error(derr)
-	}
-	T.Logf("Decompressed: %s\n", decoded)
-
-	if !bytes.Equal(s, decoded) {
-		T.Error("Decoded output does not match original input")
-	} else {
-		T.Log("Decoded output matches original input")
-	}
+func brotliRoundtrip(input []byte) []byte {
+  // passing nil to get default *BrotliParams
+  // careful, q=11 is the (extremely slow) default
+  compressed, _ := enc.CompressBuffer(nil, input, make([]byte, 0))
+  decompressed, _ := dec.DecompressBuffer(compressed, make([]byte, 0))
+  return decompressed
 }
-~~~
+```
+
+For a more complete roundtrip example, read top-level file `brotli_test.go`
+
+The `enc.BrotliParams` type lets you specify various Brotli parameters, such
+as `quality`, `lgwin` (sliding window size), and `lgblock` (input block size).
+
+```go
+import (
+	"gopkg.in/kothar/brotli-go.v0/enc"
+)
+
+func brotliFastCompress(input []byte) []byte {
+  params := enc.NewBrotliParams()
+  // brotli supports quality values from 0 to 11 included
+  // 0 is the fastest, 11 is the most compressed but slowest
+  params.SetQuality(0)
+  compressed, _ := enc.CompressBuffer(params, input, make([]byte, 0))
+  return compressed
+}
+```
+
+Advanced usage (streaming API)
+---
+
+When the data set is too large to fit in-memory, `CompressBuffer` and
+`DecompressBuffer` are not a viable option.
+
+`brotli-go` also exposes a streaming interface both for encoding:
+
+```go
+import (
+	"gopkg.in/kothar/brotli-go.v0/enc"
+)
+
+func main() {
+  compressedWriter := os.OpenFile("data.bin.bro", os.O_CREATE|os.O_WRONLY, 0644)
+
+  brotliWriter := enc.NewBrotliWriter(nil, compressedWriter)
+  // BrotliWriter will close writer passed as argument if it implements io.Closer
+  defer brotliWriter.Close()
+
+  fileReader, _ := os.Open("data.bin")
+  defer fileReader.Close()
+
+  io.Copy(fileReader, brotliWriter)
+}
+```
+
+..and for decoding:
+
+```go
+import (
+	"gopkg.in/kothar/brotli-go.v0/dec"
+)
+
+func main() {
+  archiveReader, _ := os.Open("data.bin.bro")
+
+  brotliReader := dec.NewBrotliReader(archiveReader)
+  defer brotliReader.Close()
+
+  decompressedWriter := os.OpenFile("data.bin.unbro", os.O_CREATE|os.O_WRONLY, 0644)
+  defer decompressedWriter.Close()
+  io.Copy(brotliReader, decompressedWriter)
+}
+```
 
 Bindings
 ---
@@ -62,13 +103,12 @@ things working with Go.
 
 1. The default dictionary has been extracted to a separate 'shared' package to allow linking the enc and dec cgo modules if you use both. Otherwise there are duplicate symbols, as described in the dictionary.h header files.
 
-2. The dictonary variable name for the dec package has been modified for the same reason, to avoid linker collisions.
+2. The dictionary variable name for the dec package has been modified for the same reason, to avoid linker collisions.
 
-TODO
+Links
 ---
 
-* I haven't implemented stream compression yet - it will need a wrapper for the C++ classes. For a stream decompression implementation, please take a look at
-https://github.com/dsnet/compress
+  * brotli streaming decompression written in pure go: <https://github.com/dsnet/compress>
 
 License
 ---
