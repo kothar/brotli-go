@@ -9,49 +9,40 @@ Usage
 To use the bindings, you just need to import the enc or dec package and call the Go wrapper
 functions `enc.CompressBuffer` or `dec.DecompressBuffer`
 
+Naive compression + decompression example with no error handling:
+
 ```go
 import (
 	"gopkg.in/kothar/brotli-go.v0/dec"
 	"gopkg.in/kothar/brotli-go.v0/enc"
 )
+
+func brotliRoundtrip(input []byte) []byte {
+  // passing nil to get default *BrotliParams
+  // careful, q=11 is the (extremely slow) default
+  compressed, _ := enc.CompressBuffer(nil, input, make([]byte, 0))
+  decompressed, _ := dec.DecompressBuffer(compressed, make([]byte, 0))
+  return decompressed
+}
 ```
 
-From the tests:
+For a more complete roundtrip example, read top-level file `brotli_test.go`
+
+The `enc.BrotliParams` type lets you specify various Brotli parameters, such
+as `quality`, `lgwin` (sliding window size), and `lgblock` (input block size).
 
 ```go
 import (
-	"bytes"
-	"testing"
-
-	"gopkg.in/kothar/brotli-go.v0/dec"
 	"gopkg.in/kothar/brotli-go.v0/enc"
 )
 
-func TestRoundtrip(T *testing.T) {
-	T.Log("Compressing test string")
-	s := []byte("Hello Hello Hello, Hello Hello Hello")
-	T.Logf("Original: %s\n", s)
-
-	params := enc.NewBrotliParams()
-	buffer1 := make([]byte, len(s)+100)
-	encoded, cerr := enc.CompressBuffer(params, s, buffer1)
-	if cerr != nil {
-		T.Error(cerr)
-	}
-	T.Logf("Compressed: %v\n", encoded)
-
-	buffer2 := make([]byte, len(s))
-	decoded, derr := dec.DecompressBuffer(encoded, buffer2)
-	if derr != nil {
-		T.Error(derr)
-	}
-	T.Logf("Decompressed: %s\n", decoded)
-
-	if !bytes.Equal(s, decoded) {
-		T.Error("Decoded output does not match original input")
-	} else {
-		T.Log("Decoded output matches original input")
-	}
+func brotliFastCompress(input []byte) []byte {
+  params := enc.NewBrotliParams()
+  // brotli supports quality values from 0 to 11 included
+  // 0 is the fastest, 11 is the most compressed but slowest
+  params.SetQuality(0)
+  compressed, _ := enc.CompressBuffer(params, input, make([]byte, 0))
+  return compressed
 }
 ```
 
@@ -71,7 +62,6 @@ import (
 func main() {
   compressedWriter := os.OpenFile("data.bin.bro", os.O_CREATE|os.O_WRONLY, 0644)
 
-  // passing nil to get default params — careful, q=11 is the (extremely slow) default
   brotliWriter := enc.NewBrotliWriter(nil, compressedWriter)
   // BrotliWriter will close writer passed as argument if it implements io.Closer
   defer brotliWriter.Close()
