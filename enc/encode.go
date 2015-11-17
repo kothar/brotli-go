@@ -45,6 +45,7 @@ import "C"
 
 import (
 	"errors"
+	"io"
 	"runtime"
 	"unsafe"
 
@@ -75,11 +76,6 @@ const (
 
 type BrotliParams struct {
 	c C.struct_CBrotliParams
-}
-
-type BrotliCompressor struct {
-	c            C.CBrotliCompressor
-	outputBuffer []byte
 }
 
 // Instantiates the compressor parameters with the default settings
@@ -169,6 +165,11 @@ func CompressBuffer(params *BrotliParams, inputBuffer []byte, encodedBuffer []by
 	return encodedBuffer[0:encodedLength], nil
 }
 
+type BrotliCompressor struct {
+	c            C.CBrotliCompressor
+	outputBuffer []byte
+}
+
 // An instance can not be reused for multiple brotli streams.
 func NewBrotliCompressor(params *BrotliParams) *BrotliCompressor {
 	if params == nil {
@@ -185,8 +186,8 @@ func NewBrotliCompressor(params *BrotliParams) *BrotliCompressor {
 }
 
 // The maximum input size that can be processed at once.
-func (bp *BrotliCompressor) GetInputBlockSize() int64 {
-	return int64(C.CBrotliCompressorGetInputBlockSize(bp.c))
+func (bp *BrotliCompressor) GetInputBlockSize() int {
+	return int(C.CBrotliCompressorGetInputBlockSize(bp.c))
 }
 
 // Copies the given input data to the internal ring buffer of the compressor.
@@ -232,6 +233,68 @@ func (bp *BrotliCompressor) Free() {
 func brotliCompressorFinalizer(bp *BrotliCompressor) {
 	bp.Free()
 }
+
+type BrotliWriter struct {
+	compressor *BrotliCompressor
+	writer     io.Writer
+
+	// amount of data already copied into ring buffer
+	inRingBuffer int
+}
+
+func NewBrotliWriter(params *BrotliParams, writer io.Writer) *BrotliWriter {
+	return &BrotliWriter{
+		compressor:   NewBrotliCompressor(params),
+		writer:       writer,
+		inRingBuffer: 0,
+	}
+}
+
+func (w *BrotliWriter) Write(buffer []byte) (int, error) {
+	comp := w.compressor
+	blockSize := int(comp.GetInputBlockSize())
+	roomFor := blockSize - w.inRingBuffer
+	copied := 0
+
+	for len(buffer) >= roomFor {
+		comp.CopyInputToRingBuffer(buffer[:roomFor])
+		copied += roomFor
+
+		compressedData, err := comp.WriteBrotliData(false, false)
+		if err != nil {
+			return copied, err
+		}
+
+		_, err = w.writer.Write(compressedData)
+		if err != nil {
+			return copied, err
+		}
+
+		buffer = buffer[roomFor:]
+		roomFor = blockSize
+	}
+
+	remaining := len(buffer)
+	if remaining > 0 {
+		comp.CopyInputToRingBuffer(buffer)
+		w.inRingBuffer = remaining
+		copied += remaining
+	}
+
+	return copied, nil
+}
+
+func (w *BrotliWriter) Close() error {
+	compressedData, err := w.compressor.WriteBrotliData(true, false)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.writer.Write(compressedData)
+	return err
+}
+
+// internal cgo utilities
 
 func toC(array []byte) *C.uint8_t {
 	return (*C.uint8_t)(unsafe.Pointer(&array[0]))

@@ -47,7 +47,7 @@ func TestStreamEncode(T *testing.T) {
 	params.SetQuality(testQuality)
 
 	input1 := []byte(strings.Repeat("The quick brown fox jumps over the lazy dog", 100000))
-	inputSize := int64(len(input1))
+	inputSize := len(input1)
 	log.Printf("q=%d, inputSize=%d\n", params.Quality(), inputSize)
 
 	for lgwin := 16; lgwin <= 22; lgwin += 1 {
@@ -56,10 +56,16 @@ func TestStreamEncode(T *testing.T) {
 		defer compressor.Free()
 		blockSize := compressor.GetInputBlockSize()
 
-		fullOutput := make([]byte, 0)
+		// compress the entire data in one go
+		fullBufferOutput, err := CompressBuffer(params, input1, make([]byte, 0))
+		if err != nil {
+			T.Error(err)
+		}
 
+		// then using the low-level stream interface
+		streamBuffer := new(bytes.Buffer)
 		rounds := 0
-		pos := int64(0)
+		pos := 0
 		for pos < inputSize {
 			rounds++
 			copySize := blockSize
@@ -74,16 +80,26 @@ func TestStreamEncode(T *testing.T) {
 			if err != nil {
 				T.Error(err)
 			}
-			fullOutput = append(fullOutput, output...)
+			streamBuffer.Write(output)
 		}
 
-		fullOutput2, _ := CompressBuffer(params, input1, make([]byte, 0))
-
-		if !bytes.Equal(fullOutput, fullOutput2) {
+		fullStreamOutput := streamBuffer.Bytes()
+		if !bytes.Equal(fullStreamOutput, fullBufferOutput) {
 			T.Fatal("for lgwin %d, stream compression didn't give same result as buffer compression", params.Lgwin())
 		}
 
-		outputSize := len(fullOutput)
+		// then using the high-level Writer interface
+		writerBuffer := new(bytes.Buffer)
+		writer := NewBrotliWriter(params, writerBuffer)
+		writer.Write(input1)
+		writer.Close()
+
+		fullWriterOutput := writerBuffer.Bytes()
+		if !bytes.Equal(fullWriterOutput, fullBufferOutput) {
+			T.Fatal("for lgwin %d, stream writer compression didn't give same result as buffer compression", params.Lgwin())
+		}
+
+		outputSize := len(fullStreamOutput)
 		log.Printf("lgwin=%d, rounds=%d, output=%d (%.4f%% of input size)\n", params.Lgwin(), rounds, outputSize, float32(outputSize)*100.0/float32(inputSize))
 	}
 }
