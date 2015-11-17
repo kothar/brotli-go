@@ -21,7 +21,7 @@ func TestStreamDecompression(T *testing.T) {
 	}
 
 	// Decompress as a stream
-	reader := Decompress(bytes.NewReader(output1))
+	reader := NewBrotliReader(bytes.NewReader(output1))
 	decoded := make([]byte, len(input1))
 
 	read, err := reader.Read(decoded)
@@ -39,7 +39,7 @@ func TestStreamDecompression(T *testing.T) {
 	}
 
 	// Decompress using a shorter buffer
-	reader = Decompress(bytes.NewReader(output1))
+	reader = NewBrotliReader(bytes.NewReader(output1))
 	decoded = make([]byte, 500)
 
 	read, err = reader.Read(decoded)

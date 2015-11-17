@@ -1,3 +1,4 @@
+// Go wrapper for the Brotli C decoder implementation
 package dec
 
 /*
@@ -139,6 +140,7 @@ func (r *BrotliReader) Read(p []byte) (int, error) {
 	return read, nil
 }
 
+// Close the reader and clean up any decompressor state
 func (r *BrotliReader) Close() error {
 
 	C.BrotliStateCleanup(&r.state)
@@ -151,13 +153,23 @@ func (r *BrotliReader) Close() error {
 }
 
 // Returns a Reader that decompresses the stream from another reader.
+//
 // Ensure that you Close the stream when you are finished in order to clean up the
-// Brotli compression state
-func Decompress(stream io.Reader) io.ReadCloser {
+// Brotli decompression state.
+//
+// The internal decompression buffer defaults to 128kb
+func NewBrotliReader(stream io.Reader) *BrotliReader {
+	return NewBrotliReaderSize(stream, 128*1024)
+}
 
+// The same as NewBrotliReader, but allows the internal buffer size to be set.
+//
+// The size of the internal buffer may be specified which will hold compressed data
+// before being read by the decompressor
+func NewBrotliReaderSize(stream io.Reader, size int) *BrotliReader {
 	r := &BrotliReader{
 		reader: stream,
-		buffer: make([]byte, 1024),
+		buffer: make([]byte, size),
 	}
 
 	C.BrotliStateInit(&r.state)
