@@ -43,6 +43,7 @@ import "C"
 import (
 	"errors"
 	"reflect"
+	"runtime"
 	"unsafe"
 
 	"gopkg.in/kothar/brotli-go.v0/shared"
@@ -169,7 +170,9 @@ func NewBrotliCompressor(params *BrotliParams) *BrotliCompressor {
 		params = NewBrotliParams()
 	}
 
-	return &BrotliCompressor{c: C.CBrotliCompressorNew(params.c)}
+	comp := &BrotliCompressor{c: C.CBrotliCompressorNew(params.c)}
+	runtime.SetFinalizer(comp, brotliCompressorFinalizer)
+	return comp
 }
 
 func (bp *BrotliCompressor) GetInputBlockSize() int64 {
@@ -190,4 +193,16 @@ func (bp *BrotliCompressor) WriteBrotliData(isLast bool, forceFlush bool) []byte
 		Cap:  int(outSize),
 	}
 	return *(*[]byte)(unsafe.Pointer(&hdr))
+}
+
+func (bp *BrotliCompressor) Free() {
+	if bp.c == nil {
+		return
+	}
+	C.CBrotliCompressorFree(bp.c)
+	bp.c = nil
+}
+
+func brotliCompressorFinalizer(bp *BrotliCompressor) {
+	bp.Free()
 }
