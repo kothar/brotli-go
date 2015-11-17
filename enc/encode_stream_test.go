@@ -1,13 +1,13 @@
 package enc
 
 import (
-	"log"
+	"bytes"
 	"strings"
 	"testing"
 )
 
 func TestStreamEncode(T *testing.T) {
-	input1 := []byte(strings.Repeat("The quick brown fox jumps over the lazy dog", 1000))
+	input1 := []byte(strings.Repeat("The quick brown fox jumps over the lazy dog", 100000))
 	inputSize := int64(len(input1))
 
 	compressor := NewBrotliCompressor(nil)
@@ -30,5 +30,8 @@ func TestStreamEncode(T *testing.T) {
 	}
 
 	fullOutput2, _ := CompressBuffer(nil, input1, make([]byte, 0))
-	log.Println("input size = ", inputSize, "output size 1 = ", len(fullOutput), "output size 2 = ", len(fullOutput2))
+
+	if !bytes.Equal(fullOutput, fullOutput2) {
+		T.Fatal("Stream compression didn't give same result as buffer compression")
+	}
 }
