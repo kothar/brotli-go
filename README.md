@@ -1,7 +1,7 @@
 Go bindings for the Brotli compression library
 ===
 
-See https://github.com/google/brotli for the upstream C/C++ source
+See <https://github.com/google/brotli> for the upstream C/C++ source
 
 Usage
 ---
@@ -9,15 +9,16 @@ Usage
 To use the bindings, you just need to import the enc or dec package and call the Go wrapper 
 functions `enc.CompressBuffer` or `dec.DecompressBuffer`
 
-~~~
+```go
 import (
 	"gopkg.in/kothar/brotli-go.v0/dec"
 	"gopkg.in/kothar/brotli-go.v0/enc"
 )
-~~~
+```
 
 From the tests:
-~~~
+
+```go
 import (
 	"bytes"
 	"testing"
@@ -52,7 +53,7 @@ func TestRoundtrip(T *testing.T) {
 		T.Log("Decoded output matches original input")
 	}
 }
-~~~
+```
 
 Bindings
 ---
@@ -62,13 +63,13 @@ things working with Go.
 
 1. The default dictionary has been extracted to a separate 'shared' package to allow linking the enc and dec cgo modules if you use both. Otherwise there are duplicate symbols, as described in the dictionary.h header files.
 
-2. The dictonary variable name for the dec package has been modified for the same reason, to avoid linker collisions.
+2. The dictionary variable name for the dec package has been modified for the same reason, to avoid linker collisions.
 
 TODO
 ---
 
 * I haven't implemented stream compression yet - it will need a wrapper for the C++ classes. For a stream decompression implementation, please take a look at
-https://github.com/dsnet/compress
+<https://github.com/dsnet/compress>
 
 License
 ---
