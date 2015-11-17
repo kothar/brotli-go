@@ -1,5 +1,8 @@
 # Go bindings for the Brotli compression library
 
+[![GoDoc](https://godoc.org/gopkg.in/kothar/brotli-go.v0?status.svg)](https://godoc.org/gopkg.in/kothar/brotli-go.v0)
+[![Build Status](https://travis-ci.org/kothar/brotli-go.svg)](https://travis-ci.org/kothar/brotli-go)
+
 See <https://github.com/google/brotli> for the upstream C/C++ source, and
 the `VERSION.md` file to find out the currently vendored version.
 
