@@ -289,6 +289,7 @@ func (w *BrotliWriter) Close() error {
 	if err != nil {
 		return err
 	}
+	w.compressor.Free()
 
 	_, err = w.writer.Write(compressedData)
 	if err != nil {
