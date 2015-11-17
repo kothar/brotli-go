@@ -37,7 +37,7 @@ void CBrotliCompressorCopyInputToRingBuffer(CBrotliCompressor cbp, const size_t 
   bp->CopyInputToRingBuffer(input_size, input_buffer);
 }
 
-void CBrotliCompressorWriteBrotliData(CBrotliCompressor cbp, const bool is_last, const bool force_flush, size_t* out_size, uint8_t** output) {
+bool CBrotliCompressorWriteBrotliData(CBrotliCompressor cbp, const bool is_last, const bool force_flush, size_t* out_size, uint8_t** output) {
   BrotliCompressor *bp = (BrotliCompressor *)cbp;
-  bp->WriteBrotliData(is_last, force_flush, out_size, output);
+  return bp->WriteBrotliData(is_last, force_flush, out_size, output);
 }

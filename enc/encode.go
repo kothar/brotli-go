@@ -2,6 +2,9 @@
 package enc
 
 /*
+// for memcpy
+#include <string.h>
+
 // Parts of original C++ header
 #include "./encode_go.h"
 
@@ -42,11 +45,15 @@ import "C"
 
 import (
 	"errors"
-	"reflect"
 	"runtime"
 	"unsafe"
 
 	"gopkg.in/kothar/brotli-go.v0/shared"
+)
+
+var (
+	ErrInputLargerThanBlockSize error = errors.New("data copied to ring buffer larger than brotli compressor block size")
+	ErrBrotliCompression        error = errors.New("brotli compression error")
 )
 
 func init() {
@@ -71,7 +78,8 @@ type BrotliParams struct {
 }
 
 type BrotliCompressor struct {
-	c C.CBrotliCompressor
+	c            C.CBrotliCompressor
+	outputBuffer []byte
 }
 
 // Instantiates the compressor parameters with the default settings
@@ -156,43 +164,61 @@ func CompressBuffer(params *BrotliParams, inputBuffer []byte, encodedBuffer []by
 	encodedLength := C.size_t(len(encodedBuffer))
 	result := C.CBrotliCompressBuffer(params.c, C.size_t(inputLength), toC(inputBuffer), &encodedLength, toC(encodedBuffer))
 	if result == 0 {
-		return nil, errors.New("Brotli compression error")
+		return nil, ErrBrotliCompression
 	}
 	return encodedBuffer[0:encodedLength], nil
 }
 
-func toC(array []byte) *C.uint8_t {
-	return (*C.uint8_t)(unsafe.Pointer(&array[0]))
-}
-
+// An instance can not be reused for multiple brotli streams.
 func NewBrotliCompressor(params *BrotliParams) *BrotliCompressor {
 	if params == nil {
 		params = NewBrotliParams()
 	}
 
-	comp := &BrotliCompressor{c: C.CBrotliCompressorNew(params.c)}
-	runtime.SetFinalizer(comp, brotliCompressorFinalizer)
-	return comp
+	cbp := C.CBrotliCompressorNew(params.c)
+	bp := &BrotliCompressor{c: cbp}
+	// cf. https://github.com/kothar/brotli-go/blob/467303b7ca58bb7417af1fc35b22933e8f344344/enc/encode_parallel.cc#L154
+	bp.outputBuffer = make([]byte, bp.GetInputBlockSize()*2+500)
+
+	runtime.SetFinalizer(bp, brotliCompressorFinalizer)
+	return bp
 }
 
+// The maximum input size that can be processed at once.
 func (bp *BrotliCompressor) GetInputBlockSize() int64 {
 	return int64(C.CBrotliCompressorGetInputBlockSize(bp.c))
 }
 
+// Copies the given input data to the internal ring buffer of the compressor.
+// No processing of the data occurs at this time and this function can be
+// called multiple times before calling WriteBrotliData() to process the
+// accumulated input. At most GetInputBlockSize() bytes of input data can be
+// copied to the ring buffer, otherwise the next WriteBrotliData() will fail.
 func (bp *BrotliCompressor) CopyInputToRingBuffer(input []byte) {
 	C.CBrotliCompressorCopyInputToRingBuffer(bp.c, C.size_t(len(input)), toC(input))
 }
 
-func (bp *BrotliCompressor) WriteBrotliData(isLast bool, forceFlush bool) []byte {
+// Processes the accumulated input data and returns the new output meta-block,
+// or zero if no new output meta-block was created (in this case the processed
+// input data is buffered internally).
+// Returns ErrInputLargerThanBlockSize if more data was copied to the ring buffer
+// than the block sized.
+// If isLast or forceFlush is true, an output meta-block is always created
+func (bp *BrotliCompressor) WriteBrotliData(isLast bool, forceFlush bool) ([]byte, error) {
 	var outSize C.size_t
 	var output *C.uint8_t
-	C.CBrotliCompressorWriteBrotliData(bp.c, C.bool(isLast), C.bool(forceFlush), &outSize, &output)
-	hdr := reflect.SliceHeader{
-		Data: uintptr(unsafe.Pointer(output)),
-		Len:  int(outSize),
-		Cap:  int(outSize),
+	success := C.CBrotliCompressorWriteBrotliData(bp.c, C.bool(isLast), C.bool(forceFlush), &outSize, &output)
+	if success == false {
+		return nil, ErrInputLargerThanBlockSize
 	}
-	return *(*[]byte)(unsafe.Pointer(&hdr))
+
+	// resize buffer if output is larger than we've anticipated
+	if int(outSize) > cap(bp.outputBuffer) {
+		bp.outputBuffer = make([]byte, int(outSize))
+	}
+
+	C.memcpy(unsafe.Pointer(&bp.outputBuffer[0]), unsafe.Pointer(output), outSize)
+	return bp.outputBuffer[:outSize], nil
 }
 
 func (bp *BrotliCompressor) Free() {
@@ -205,4 +231,8 @@ func (bp *BrotliCompressor) Free() {
 
 func brotliCompressorFinalizer(bp *BrotliCompressor) {
 	bp.Free()
+}
+
+func toC(array []byte) *C.uint8_t {
+	return (*C.uint8_t)(unsafe.Pointer(&array[0]))
 }

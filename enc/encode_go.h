@@ -51,11 +51,30 @@ int CBrotliCompressBuffer(CBrotliParams params,
 
 // Streaming API
 typedef void* CBrotliCompressor;
+
+// An instance can not be reused for multiple brotli streams.
 CBrotliCompressor CBrotliCompressorNew(CBrotliParams params);
+
 void CBrotliCompressorFree(CBrotliCompressor cbp);
+
+// The maximum input size that can be processed at once.
 size_t CBrotliCompressorGetInputBlockSize(CBrotliCompressor cbp);
+
+// Copies the given input data to the internal ring buffer of the compressor.
+// No processing of the data occurs at this time and this function can be
+// called multiple times before calling WriteBrotliData() to process the
+// accumulated input. At most input_block_size() bytes of input data can be
+// copied to the ring buffer, otherwise the next WriteBrotliData() will fail.
 void CBrotliCompressorCopyInputToRingBuffer(CBrotliCompressor cbp, const size_t input_size, const uint8_t* input_buffer);
-void CBrotliCompressorWriteBrotliData(CBrotliCompressor cbp, const bool is_last, const bool force_flush, size_t* out_size, uint8_t** output);
+
+// Processes the accumulated input data and sets *out_size to the length of
+// the new output meta-block, or to zero if no new output meta-block was
+// created (in this case the processed input data is buffered internally).
+// If *out_size is positive, *output points to the start of the output data.
+// Returns false if the size of the input data is larger than
+// input_block_size() or if there was an error during writing the output.
+// If is_last or force_flush is true, an output meta-block is always created.
+bool CBrotliCompressorWriteBrotliData(CBrotliCompressor cbp, const bool is_last, const bool force_flush, size_t* out_size, uint8_t** output);
 
 #ifdef __cplusplus
 }

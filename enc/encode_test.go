@@ -70,7 +70,10 @@ func TestStreamEncode(T *testing.T) {
 			compressor.CopyInputToRingBuffer(input1[pos : pos+copySize])
 			pos += copySize
 
-			output := compressor.WriteBrotliData(pos >= inputSize, false)
+			output, err := compressor.WriteBrotliData(pos >= inputSize, false)
+			if err != nil {
+				T.Error(err)
+			}
 			fullOutput = append(fullOutput, output...)
 		}
 
