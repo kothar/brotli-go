@@ -10,6 +10,8 @@ import "C"
 
 import (
 	"errors"
+	"io"
+	"runtime"
 	"unsafe"
 
 	"gopkg.in/kothar/brotli-go.v0/shared"
@@ -64,4 +66,103 @@ func DecompressBuffer(encodedBuffer []byte, decodedBuffer []byte) ([]byte, error
 
 func toC(array []byte) *C.uint8_t {
 	return (*C.uint8_t)(unsafe.Pointer(&array[0]))
+}
+
+// Decompresses a Brotli-encoded stream using the io.Reader interface
+type BrotliReader struct {
+	state  C.BrotliState
+	reader io.Reader
+
+	// Internal buffer for compressed data
+	buffer []byte
+
+	availableIn C.size_t
+	nextIn      *C.uint8_t
+	totalOut    C.size_t
+}
+
+// Fill a buffer, p, with the decompressed contents of the stream.
+// Returns the number of bytes read, or an error
+func (r *BrotliReader) Read(p []byte) (int, error) {
+	var err error
+
+	// Prepare arguments
+	maxOutput := len(p)
+	availableOut := C.size_t(maxOutput)
+	nextOut := (*C.uint8_t)(unsafe.Pointer(&p[0]))
+	var read int
+
+	for availableOut > 0 {
+
+		// Read more compressed data
+		if r.availableIn == 0 {
+			var read int
+			if read, err = r.reader.Read(r.buffer); err != nil {
+				return 0, err
+			}
+			r.availableIn = C.size_t(read)
+			r.nextIn = (*C.uint8_t)(unsafe.Pointer(&r.buffer[0]))
+		}
+
+		if r.availableIn > 0 {
+			// Decompress
+			result := C.BrotliDecompressStream(
+				&r.availableIn,
+				&r.nextIn,
+				&availableOut,
+				&nextOut,
+				&r.totalOut,
+				&r.state,
+			)
+
+			read = maxOutput - int(availableOut)
+
+			switch result {
+			case C.BROTLI_RESULT_SUCCESS:
+				break
+			case C.BROTLI_RESULT_NEEDS_MORE_OUTPUT:
+				if read > 0 {
+					return read, nil
+				} else {
+					return 0, errors.New("Brotli decompression error: needs more output buffer")
+				}
+			case C.BROTLI_RESULT_ERROR:
+				return 0, errors.New("Brotli decompression error")
+			case C.BROTLI_RESULT_NEEDS_MORE_INPUT:
+				continue
+			default:
+				return 0, errors.New("Unrecognised Brotli decompression error")
+			}
+		}
+	}
+
+	return read, nil
+}
+
+func (r *BrotliReader) Close() error {
+
+	C.BrotliStateCleanup(&r.state)
+
+	if v, ok := r.reader.(io.Closer); ok {
+		return v.Close()
+	}
+
+	return nil
+}
+
+// Returns a Reader that decompresses the stream from another reader.
+// Ensure that you Close the stream when you are finished in order to clean up the
+// Brotli compression state
+func Decompress(stream io.Reader) io.ReadCloser {
+
+	r := &BrotliReader{
+		reader: stream,
+		buffer: make([]byte, 1024),
+	}
+
+	C.BrotliStateInit(&r.state)
+
+	runtime.SetFinalizer(r, func(c io.Closer) { c.Close() })
+
+	return r
 }
