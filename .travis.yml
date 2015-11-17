@@ -1,0 +1,51 @@
+
+# This .travis.yml file looks complicated, because it is! Here's what it does:
+#   - Build a `gbr` binary for darwin/amd64, linux/386+amd64, and windows/386+amd64
+#     (windows builds are cross-compiled from linux thanks to mingw-w64)
+#   - Run `go test` for all packages on darwin/amd64 and linux/amd64
+#   - Works even though cgo crosscompilation is a bit of a mess
+
+language: go
+go: 1.5.1
+
+matrix:
+  allow_failures:
+   - os: linux
+     env:
+  include:
+   - os: osx
+     env: BROTLI_OS=darwin BROTLI_ARCH=amd64
+   - os: linux
+     env: BROTLI_OS=linux BROTLI_ARCH=386
+     addons:
+       apt:
+         packages:
+           - gcc-multilib
+           - g++-multilib
+   - os: linux
+     env: BROTLI_OS=linux BROTLI_ARCH=amd64
+   - os: linux
+     env: BROTLI_OS=windows BROTLI_ARCH=386 TRIPLET=i686-w64-mingw32
+     addons:
+       apt:
+         packages:
+           - gcc-mingw-w64-i686
+           - g++-mingw-w64-i686
+           - binutils-mingw-w64-i686
+   - os: linux
+     env: BROTLI_OS=windows BROTLI_ARCH=amd64 TRIPLET=x86_64-w64-mingw32
+     addons:
+       apt:
+         packages:
+           - gcc-mingw-w64-x86-64
+           - g++-mingw-w64-x86-64
+           - binutils-mingw-w64-x86-64
+install:
+  - go get -d -v ./...
+script:
+  - go get github.com/mitchellh/gox
+  - export OSARCH=$BROTLI_OS/$BROTLI_ARCH
+  - if [[ -n $TRIPLET ]]; then export CC=$TRIPLET-gcc; export CXX=$TRIPLET-g++; fi
+  - if [[ $BROTLI_OS = windows ]]; then export BROTLI_LDFLAGS="$BROTLI_LDFLAGS -extldflags \"-Wl,--allow-multiple-definition -static\""; export BROTLI_EXT=".exe"; fi
+  - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then go test -v; go test ./enc -v; fi
+  - (cd gbr && gox -osarch "$OSARCH" -ldflags "$BROTLI_LDFLAGS $EXTRA_LDFLAGS" -cgo -output="gbr" && file gbr${BROTLI_EXT})
