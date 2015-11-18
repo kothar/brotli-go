@@ -58,7 +58,7 @@ matrix:
 before_install:
   # our 'canonical import path' is gopkg.in-based, not github.com, cf. #17
   - cd ${GOPATH}
-  - BROTLI_CANONICAL_IMPORT=${GOPATH}/src/gopkg.in/kothar/brotli-go.v0
+  - export BROTLI_CANONICAL_IMPORT=${GOPATH}/src/gopkg.in/kothar/brotli-go.v0
   - mv ${TRAVIS_BUILD_DIR} ${BROTLI_CANONICAL_IMPORT}
   - export TRAVIS_BUILD_DIR=${BROTLI_CANONICAL_IMPORT}
   - cd ${TRAVIS_BUILD_DIR}
