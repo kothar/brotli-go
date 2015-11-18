@@ -71,8 +71,10 @@ func toC(array []byte) *C.uint8_t {
 
 // Decompresses a Brotli-encoded stream using the io.Reader interface
 type BrotliReader struct {
-	state  C.BrotliState
-	reader io.Reader
+	state     C.BrotliState
+	reader    io.Reader
+	skipInput bool
+	err       error
 
 	// Internal buffer for compressed data
 	buffer []byte
@@ -85,27 +87,38 @@ type BrotliReader struct {
 // Fill a buffer, p, with the decompressed contents of the stream.
 // Returns the number of bytes read, or an error
 func (r *BrotliReader) Read(p []byte) (int, error) {
-	var err error
+
+	if r.err != nil {
+		return 0, r.err
+	}
+
+	maxOutput := len(p)
+	if maxOutput == 0 {
+		return 0, nil
+	}
 
 	// Prepare arguments
-	maxOutput := len(p)
 	availableOut := C.size_t(maxOutput)
 	nextOut := (*C.uint8_t)(unsafe.Pointer(&p[0]))
-	var read int
 
 	for availableOut > 0 {
-
 		// Read more compressed data
-		if r.availableIn == 0 {
-			var read int
-			if read, err = r.reader.Read(r.buffer); err != nil {
+		if r.availableIn == 0 && !r.skipInput {
+			read, err := r.reader.Read(r.buffer)
+			if read > 0 && err == io.EOF {
+				err = nil
+			}
+			if err != nil {
+				if err == io.EOF {
+					err = io.ErrUnexpectedEOF
+				}
 				return 0, err
 			}
 			r.availableIn = C.size_t(read)
 			r.nextIn = (*C.uint8_t)(unsafe.Pointer(&r.buffer[0]))
 		}
 
-		if r.availableIn > 0 {
+		if r.availableIn > 0 || r.skipInput {
 			// Decompress
 			result := C.BrotliDecompressStream(
 				&r.availableIn,
@@ -116,33 +129,35 @@ func (r *BrotliReader) Read(p []byte) (int, error) {
 				&r.state,
 			)
 
-			read = maxOutput - int(availableOut)
-
+			read := maxOutput - int(availableOut)
 			switch result {
 			case C.BROTLI_RESULT_SUCCESS:
-				break
+				r.err = io.EOF
+				return read, r.err
 			case C.BROTLI_RESULT_NEEDS_MORE_OUTPUT:
+				r.skipInput = true
 				if read > 0 {
 					return read, nil
 				} else {
-					return 0, errors.New("Brotli decompression error: needs more output buffer")
+					r.err = errors.New("Brotli decompression error: needs more output buffer")
+					return 0, r.err
 				}
 			case C.BROTLI_RESULT_ERROR:
-				return 0, errors.New("Brotli decompression error")
+				r.err = errors.New("Brotli decompression error")
+				return 0, r.err
 			case C.BROTLI_RESULT_NEEDS_MORE_INPUT:
+				r.skipInput = false
 				continue
 			default:
 				return 0, errors.New("Unrecognised Brotli decompression error")
 			}
 		}
 	}
-
-	return read, nil
+	return maxOutput, nil
 }
 
 // Close the reader and clean up any decompressor state
 func (r *BrotliReader) Close() error {
-
 	C.BrotliStateCleanup(&r.state)
 
 	if v, ok := r.reader.(io.Closer); ok {
