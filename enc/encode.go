@@ -270,6 +270,7 @@ func (w *BrotliWriter) Write(buffer []byte) (int, error) {
 			return copied, err
 		}
 
+		w.inRingBuffer = 0
 		buffer = buffer[roomFor:]
 		roomFor = blockSize
 	}
@@ -277,7 +278,7 @@ func (w *BrotliWriter) Write(buffer []byte) (int, error) {
 	remaining := len(buffer)
 	if remaining > 0 {
 		comp.CopyInputToRingBuffer(buffer)
-		w.inRingBuffer = remaining
+		w.inRingBuffer += remaining
 		copied += remaining
 	}
 

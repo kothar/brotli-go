@@ -77,14 +77,20 @@ type BrotliReader struct {
 	// Internal buffer for compressed data
 	buffer []byte
 
-	availableIn C.size_t
-	nextIn      *C.uint8_t
-	totalOut    C.size_t
+	availableIn     C.size_t
+	nextIn          *C.uint8_t
+	totalOut        C.size_t
+	eof             bool
+	needsMoreOutput bool
 }
 
 // Fill a buffer, p, with the decompressed contents of the stream.
 // Returns the number of bytes read, or an error
 func (r *BrotliReader) Read(p []byte) (int, error) {
+	if r.eof {
+		return 0, io.EOF
+	}
+
 	var err error
 
 	// Prepare arguments
@@ -99,13 +105,24 @@ func (r *BrotliReader) Read(p []byte) (int, error) {
 		if r.availableIn == 0 {
 			var read int
 			if read, err = r.reader.Read(r.buffer); err != nil {
-				return 0, err
+				if err == io.EOF {
+					r.eof = true
+					if !r.needsMoreOutput {
+						break
+					}
+				} else {
+					return 0, err
+				}
 			}
+
 			r.availableIn = C.size_t(read)
 			r.nextIn = (*C.uint8_t)(unsafe.Pointer(&r.buffer[0]))
 		}
 
-		if r.availableIn > 0 {
+		if r.availableIn > 0 || r.needsMoreOutput {
+			r.needsMoreOutput = false
+			r.eof = false
+
 			// Decompress
 			result := C.BrotliDecompressStream(
 				&r.availableIn,
@@ -122,6 +139,8 @@ func (r *BrotliReader) Read(p []byte) (int, error) {
 			case C.BROTLI_RESULT_SUCCESS:
 				break
 			case C.BROTLI_RESULT_NEEDS_MORE_OUTPUT:
+				r.needsMoreOutput = true
+
 				if read > 0 {
 					return read, nil
 				} else {
