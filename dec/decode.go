@@ -71,9 +71,11 @@ func toC(array []byte) *C.uint8_t {
 
 // Decompresses a Brotli-encoded stream using the io.Reader interface
 type BrotliReader struct {
-	state     C.BrotliState
-	reader    io.Reader
-	skipInput bool
+	reader io.Reader
+	state  *C.BrotliState
+
+	needOutput bool  // State bounces between needing input and output
+	err        error // Persistent error
 
 	// Internal buffer for compressed data
 	buffer []byte
@@ -85,33 +87,34 @@ type BrotliReader struct {
 
 // Fill a buffer, p, with the decompressed contents of the stream.
 // Returns the number of bytes read, or an error
-func (r *BrotliReader) Read(p []byte) (int, error) {
-	// Prepare arguments
-	if len(p) == 0 {
-		return 0, nil
+func (r *BrotliReader) Read(p []byte) (cnt int, err error) {
+	if len(p) == 0 || r.err != nil {
+		return 0, r.err
 	}
+
+	// Prepare arguments
 	maxOutput := len(p)
 	availableOut := C.size_t(maxOutput)
 	nextOut := (*C.uint8_t)(unsafe.Pointer(&p[0]))
 
-	for availableOut > 0 {
+	for availableOut > 0 && r.err == nil {
 		// Read more compressed data
-		if r.availableIn == 0 && !r.skipInput {
+		if r.availableIn == 0 && !r.needOutput {
 			read, err := r.reader.Read(r.buffer)
 			if read > 0 && err == io.EOF {
-				err = nil
+				err = nil // Let next Read call return (0, io.EOF)
 			}
 			if err != nil {
 				if err == io.EOF {
 					err = io.ErrUnexpectedEOF
 				}
-				return 0, err
+				r.err = err
 			}
 			r.availableIn = C.size_t(read)
 			r.nextIn = (*C.uint8_t)(unsafe.Pointer(&r.buffer[0]))
 		}
 
-		if r.availableIn > 0 || r.skipInput {
+		if r.availableIn > 0 || r.needOutput {
 			// Decompress
 			result := C.BrotliDecompressStream(
 				&r.availableIn,
@@ -119,43 +122,43 @@ func (r *BrotliReader) Read(p []byte) (int, error) {
 				&availableOut,
 				&nextOut,
 				&r.totalOut,
-				&r.state,
+				r.state,
 			)
 
-			read := maxOutput - int(availableOut)
+			cnt = maxOutput - int(availableOut)
 			switch result {
 			case C.BROTLI_RESULT_SUCCESS:
-				return read, io.EOF
+				r.err = io.EOF
 			case C.BROTLI_RESULT_NEEDS_MORE_OUTPUT:
-				r.skipInput = true
-				if read > 0 {
-					return read, nil
-				} else {
-					return 0, errors.New("Brotli decompression error: needs more output buffer")
+				r.needOutput = true
+				if cnt > 0 {
+					return cnt, r.err
 				}
+				r.err = errors.New("Brotli decompression error: needs more output buffer")
 			case C.BROTLI_RESULT_ERROR:
-				return 0, errors.New("Brotli decompression error")
+				r.err = errors.New("Brotli decompression error")
 			case C.BROTLI_RESULT_NEEDS_MORE_INPUT:
-				r.skipInput = false
-				continue
+				r.needOutput = false
 			default:
-				return 0, errors.New("Unrecognised Brotli decompression error")
+				r.err = errors.New("Unrecognized Brotli decompression error")
 			}
 		}
 	}
-	return maxOutput, nil
+	return cnt, r.err
 }
 
-// Close the reader and clean up any decompressor state
+// Close the reader and clean up any decompressor state.
 func (r *BrotliReader) Close() error {
-
-	C.BrotliStateCleanup(&r.state)
-
-	if v, ok := r.reader.(io.Closer); ok {
-		return v.Close()
+	if r.state == nil {
+		return r.err
 	}
-
-	return nil
+	C.BrotliStateCleanup(r.state)
+	r.state = nil
+	if r.err == nil || r.err == io.EOF {
+		r.err = io.ErrClosedPipe // Make sure future operations fail
+		return nil
+	}
+	return r.err
 }
 
 // Returns a Reader that decompresses the stream from another reader.
@@ -175,10 +178,11 @@ func NewBrotliReader(stream io.Reader) *BrotliReader {
 func NewBrotliReaderSize(stream io.Reader, size int) *BrotliReader {
 	r := &BrotliReader{
 		reader: stream,
+		state:  new(C.BrotliState),
 		buffer: make([]byte, size),
 	}
 
-	C.BrotliStateInit(&r.state)
+	C.BrotliStateInit(r.state)
 
 	runtime.SetFinalizer(r, func(c io.Closer) { c.Close() })
 
