@@ -2,6 +2,7 @@ package brotli
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"testing"
 
@@ -70,32 +71,80 @@ func TestRoundtrip(T *testing.T) {
 			params := enc.NewBrotliParams()
 			params.SetQuality(quality)
 
-			bro, err := enc.CompressBuffer(params, input, nil)
-			if err != nil {
-				T.Error(err)
-			}
-			T.Logf("  Compressed from %d to %d bytes, %.1f%%", len(input), len(bro), (float32(len(bro))/float32(len(input)))*100)
+			bro := testCompressBuffer(params, input, T)
 
-			unbro, err := dec.DecompressBuffer(bro, nil)
-			if err != nil {
-				T.Error(err)
-			}
+			testDecompressBuffer(input, bro, T)
 
-			if len(input) != len(unbro) {
-				T.Errorf("Length of decompressed output (%d) doesn't match input (%d)", len(unbro), len(input))
-			}
+			testDecompressStream(input, bytes.NewReader(bro), T)
 
-			if !bytes.Equal(input, unbro) {
-				T.Error("  Input does not match decompressed output")
-			}
+			// Stream compress
+			buffer := new(bytes.Buffer)
+			testCompressStream(params, input, buffer, T)
+
+			testDecompressBuffer(input, buffer.Bytes(), T)
+
+			// Stream roundtrip
+			reader, writer := io.Pipe()
+			go testCompressStream(params, input, writer, T)
+			testDecompressStream(input, reader, T)
 		}
 	}
 }
 
-func cap(s []byte, length int) []byte {
-	if len(s) > length {
-		return s[:length]
-	} else {
-		return s
+func testCompressBuffer(params *enc.BrotliParams, input []byte, T *testing.T) []byte {
+	// Test buffer compression
+	bro, err := enc.CompressBuffer(params, input, nil)
+	if err != nil {
+		T.Error(err)
+	}
+	T.Logf("  Compressed from %d to %d bytes, %.1f%%", len(input), len(bro), (float32(len(bro))/float32(len(input)))*100)
+
+	return bro
+}
+
+func testDecompressBuffer(input, bro []byte, T *testing.T) {
+	// Buffer decompression
+	unbro, err := dec.DecompressBuffer(bro, nil)
+	if err != nil {
+		T.Error(err)
+	}
+
+	check("Buffer decompress", input, unbro, T)
+}
+
+func testDecompressStream(input []byte, reader io.Reader, T *testing.T) {
+	// Stream decompression
+	streamUnbro, err := ioutil.ReadAll(dec.NewBrotliReader(reader))
+	if err != nil {
+		T.Error(err)
+	}
+
+	check("Stream decompress", input, streamUnbro, T)
+}
+
+func testCompressStream(params *enc.BrotliParams, input []byte, writer io.Writer, T *testing.T) {
+	bwriter := enc.NewBrotliWriter(params, writer)
+	n, err := bwriter.Write(input)
+	if err != nil {
+		T.Error(err)
+	}
+
+	err = bwriter.Close()
+	if err != nil {
+		T.Error(err)
+	}
+
+	if n != len(input) {
+		T.Error("Not all input was consumed")
+	}
+}
+
+func check(test string, input, output []byte, T *testing.T) {
+	if len(input) != len(output) {
+		T.Errorf("  %s: Length of decompressed output (%d) doesn't match input (%d)", test, len(output), len(input))
+	}
+
+	if !bytes.Equal(input, output) {
+		T.Errorf("  %s: Input does not match decompressed output", test)
 	}
 }
