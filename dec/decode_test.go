@@ -2,6 +2,7 @@ package dec
 
 import (
 	"bytes"
+	"io"
 	"testing"
 
 	"gopkg.in/kothar/brotli-go.v0/enc"
@@ -24,7 +25,7 @@ func TestStreamDecompression(T *testing.T) {
 	reader := NewBrotliReader(bytes.NewReader(output1))
 	decoded := make([]byte, len(input1))
 
-	read, err := reader.Read(decoded)
+	read, err := io.ReadFull(reader, decoded)
 	if err != nil {
 		T.Fatal(err)
 	}
