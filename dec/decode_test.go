@@ -3,6 +3,9 @@ package dec
 import (
 	"bytes"
 	"io"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"gopkg.in/kothar/brotli-go.v0/enc"
@@ -70,5 +73,42 @@ func TestStreamDecompression(T *testing.T) {
 	T.Logf("Output: %s", decoded[:50])
 	if !bytes.Equal(decoded, input1[len(decoded):2*len(decoded)]) {
 		T.Error("Decoded output does not match original input")
+	}
+}
+
+// Attempt to GC error in decoder
+func TestGCErrors(T *testing.T) {
+	files, err := filepath.Glob("../testdata/*.compressed")
+	if err != nil {
+		T.Fatal(err)
+	}
+	decoded := make([]byte, 18123)
+
+	for _, file := range files {
+		T.Logf("Decompressing %s\n", file)
+
+		// Decompress stream
+		fileReader, err := os.Open(file)
+		if err != nil {
+			T.Fatal(err)
+		}
+		reader := NewBrotliReader(fileReader)
+		defer reader.Close()
+
+		for {
+			read, err := reader.Read(decoded)
+			if err != nil {
+				if err == io.EOF {
+					if read == 0 {
+						break
+					}
+				} else {
+					T.Fatal(err)
+				}
+			}
+
+			// Force garbage collection
+			runtime.GC()
+		}
 	}
 }
