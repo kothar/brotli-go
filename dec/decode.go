@@ -71,12 +71,12 @@ func toC(array []byte) *C.uint8_t {
 
 // don't let the go 1.5.1 GC put its dirty paws in our beautiful C struct (#14)
 // cf. https://github.com/youtube/vitess/blob/071d0e649f22034ad4285c7431ac0a2c9c20090d/go/cgzip/zstream.go#L86-L89
-type CBrotliState [unsafe.Sizeof(C.BrotliState{})]C.char
+type cBrotliState [unsafe.Sizeof(C.BrotliState{})]C.char
 
 // Decompresses a Brotli-encoded stream using the io.Reader interface
 type BrotliReader struct {
 	reader io.Reader
-	state  CBrotliState
+	state  cBrotliState
 	closed bool
 
 	needOutput bool  // State bounces between needing input and output
