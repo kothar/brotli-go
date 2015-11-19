@@ -3,6 +3,7 @@ package dec
 import (
 	"bytes"
 	"io"
+	"runtime"
 	"testing"
 
 	"gopkg.in/kothar/brotli-go.v0/enc"
@@ -71,4 +72,39 @@ func TestStreamDecompression(T *testing.T) {
 	if !bytes.Equal(decoded, input1[len(decoded):2*len(decoded)]) {
 		T.Error("Decoded output does not match original input")
 	}
+}
+
+// Attempt to GC error in decoder
+func TestGCErrors(T *testing.T) {
+	input := bytes.Repeat([]byte("The quick brown fox jumps over the lazy dog. "), 10000)
+
+	buffer := make([]byte, len(input)*2)
+	params := enc.NewBrotliParams()
+	params.SetQuality(4)
+
+	output, err := enc.CompressBuffer(params, input, buffer)
+	if err != nil {
+		T.Fatal(err)
+	}
+
+	// Decompress stream
+	reader := NewBrotliReader(bytes.NewReader(output))
+	decoded := make([]byte, 18123)
+	var count int
+	for read, err := reader.Read(decoded); err != io.EOF; {
+		if err != nil {
+			T.Fatal(err)
+		}
+
+		count += read
+		T.Logf("Read %d/%d bytes\n", count, len(input))
+		if count > len(input) {
+			T.Error("Too many bytes read from stream without EOF")
+			break
+		}
+
+		// Force garbage collection
+		runtime.GC()
+	}
+	reader.Close()
 }
