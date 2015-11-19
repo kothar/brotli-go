@@ -82,8 +82,8 @@ type BrotliReader struct {
 	needOutput bool  // State bounces between needing input and output
 	err        error // Persistent error
 
-	// Internal buffer for compressed data
-	buffer []byte
+	buffer     []byte // Internal buffer for compressed data
+	bufferRead int    // How many bytes in the buffer are valid
 
 	availableIn C.size_t
 	totalOut    C.size_t
@@ -114,15 +114,16 @@ func (r *BrotliReader) Read(p []byte) (n int, err error) {
 				}
 				r.err = err
 			}
+			r.bufferRead = read
 			r.availableIn = C.size_t(read)
 		}
 
 		if r.availableIn > 0 || r.needOutput {
 			// Decompress
-			nextIn := (*C.uint8_t)(unsafe.Pointer(&r.buffer[len(r.buffer)-int(r.availableIn)]))
+			nextIn := (*C.uint8_t)(unsafe.Pointer(&r.buffer[r.bufferRead-int(r.availableIn)]))
 			result := C.BrotliDecompressStream(
 				&r.availableIn,
-				&r.nextIn,
+				&nextIn,
 				&availableOut,
 				&nextOut,
 				&r.totalOut,
