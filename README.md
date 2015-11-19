@@ -72,7 +72,7 @@ func main() {
   fileReader, _ := os.Open("data.bin")
   defer fileReader.Close()
 
-  io.Copy(fileReader, brotliWriter)
+  io.Copy(brotliWriter,fileReader)
 }
 ```
 
@@ -91,7 +91,7 @@ func main() {
 
   decompressedWriter := os.OpenFile("data.bin.unbro", os.O_CREATE|os.O_WRONLY, 0644)
   defer decompressedWriter.Close()
-  io.Copy(brotliReader, decompressedWriter)
+  io.Copy(decompressedWriter, brotliReader)
 }
 ```
 
