@@ -52,9 +52,9 @@ func TestStreamEncode(T *testing.T) {
 
 	for lgwin := 16; lgwin <= 22; lgwin += 1 {
 		params.SetLgwin(lgwin)
-		compressor := NewBrotliCompressor(params)
-		defer compressor.Free()
-		blockSize := compressor.GetInputBlockSize()
+		compressor := newBrotliCompressor(params)
+		defer compressor.free()
+		blockSize := compressor.getInputBlockSize()
 
 		// compress the entire data in one go
 		fullBufferOutput, err := CompressBuffer(params, input1, make([]byte, 0))
@@ -73,10 +73,10 @@ func TestStreamEncode(T *testing.T) {
 			if remaining < copySize {
 				copySize = remaining
 			}
-			compressor.CopyInputToRingBuffer(input1[pos : pos+copySize])
+			compressor.copyInputToRingBuffer(input1[pos : pos+copySize])
 			pos += copySize
 
-			output, err := compressor.WriteBrotliData(pos >= inputSize, false)
+			output, err := compressor.writeBrotliData(pos >= inputSize, false)
 			if err != nil {
 				T.Error(err)
 			}

@@ -163,37 +163,37 @@ func CompressBuffer(params *BrotliParams, inputBuffer []byte, encodedBuffer []by
 	return encodedBuffer[0:encodedLength], nil
 }
 
-type BrotliCompressor struct {
+type brotliCompressor struct {
 	c            C.CBrotliCompressor
 	outputBuffer []byte
 }
 
 // An instance can not be reused for multiple brotli streams.
-func NewBrotliCompressor(params *BrotliParams) *BrotliCompressor {
+func newBrotliCompressor(params *BrotliParams) *brotliCompressor {
 	if params == nil {
 		params = NewBrotliParams()
 	}
 
 	cbp := C.CBrotliCompressorNew(params.c)
-	bp := &BrotliCompressor{c: cbp}
+	bp := &brotliCompressor{c: cbp}
 	// cf. https://github.com/kothar/brotli-go/blob/467303b7ca58bb7417af1fc35b22933e8f344344/enc/encode_parallel.cc#L154
-	bp.outputBuffer = make([]byte, bp.GetInputBlockSize()*2+500)
+	bp.outputBuffer = make([]byte, bp.getInputBlockSize()*2+500)
 
 	runtime.SetFinalizer(bp, brotliCompressorFinalizer)
 	return bp
 }
 
 // The maximum input size that can be processed at once.
-func (bp *BrotliCompressor) GetInputBlockSize() int {
+func (bp *brotliCompressor) getInputBlockSize() int {
 	return int(C.CBrotliCompressorGetInputBlockSize(bp.c))
 }
 
 // Copies the given input data to the internal ring buffer of the compressor.
 // No processing of the data occurs at this time and this function can be
 // called multiple times before calling WriteBrotliData() to process the
-// accumulated input. At most GetInputBlockSize() bytes of input data can be
+// accumulated input. At most getInputBlockSize() bytes of input data can be
 // copied to the ring buffer, otherwise the next WriteBrotliData() will fail.
-func (bp *BrotliCompressor) CopyInputToRingBuffer(input []byte) {
+func (bp *brotliCompressor) copyInputToRingBuffer(input []byte) {
 	C.CBrotliCompressorCopyInputToRingBuffer(bp.c, C.size_t(len(input)), toC(input))
 }
 
@@ -203,7 +203,7 @@ func (bp *BrotliCompressor) CopyInputToRingBuffer(input []byte) {
 // Returns ErrInputLargerThanBlockSize if more data was copied to the ring buffer
 // than the block sized.
 // If isLast or forceFlush is true, an output meta-block is always created
-func (bp *BrotliCompressor) WriteBrotliData(isLast bool, forceFlush bool) ([]byte, error) {
+func (bp *brotliCompressor) writeBrotliData(isLast bool, forceFlush bool) ([]byte, error) {
 	var outSize C.size_t
 	var output *C.uint8_t
 	success := C.CBrotliCompressorWriteBrotliData(bp.c, C.bool(isLast), C.bool(forceFlush), &outSize, &output)
@@ -220,7 +220,7 @@ func (bp *BrotliCompressor) WriteBrotliData(isLast bool, forceFlush bool) ([]byt
 	return bp.outputBuffer[:outSize], nil
 }
 
-func (bp *BrotliCompressor) Free() {
+func (bp *brotliCompressor) free() {
 	if bp.c == nil {
 		return
 	}
@@ -228,12 +228,12 @@ func (bp *BrotliCompressor) Free() {
 	bp.c = nil
 }
 
-func brotliCompressorFinalizer(bp *BrotliCompressor) {
-	bp.Free()
+func brotliCompressorFinalizer(bp *brotliCompressor) {
+	bp.free()
 }
 
 type BrotliWriter struct {
-	compressor *BrotliCompressor
+	compressor *brotliCompressor
 	writer     io.Writer
 
 	// amount of data already copied into ring buffer
@@ -242,7 +242,7 @@ type BrotliWriter struct {
 
 func NewBrotliWriter(params *BrotliParams, writer io.Writer) *BrotliWriter {
 	return &BrotliWriter{
-		compressor:   NewBrotliCompressor(params),
+		compressor:   newBrotliCompressor(params),
 		writer:       writer,
 		inRingBuffer: 0,
 	}
@@ -250,15 +250,15 @@ func NewBrotliWriter(params *BrotliParams, writer io.Writer) *BrotliWriter {
 
 func (w *BrotliWriter) Write(buffer []byte) (int, error) {
 	comp := w.compressor
-	blockSize := int(comp.GetInputBlockSize())
+	blockSize := int(comp.getInputBlockSize())
 	roomFor := blockSize - w.inRingBuffer
 	copied := 0
 
 	for len(buffer) >= roomFor {
-		comp.CopyInputToRingBuffer(buffer[:roomFor])
+		comp.copyInputToRingBuffer(buffer[:roomFor])
 		copied += roomFor
 
-		compressedData, err := comp.WriteBrotliData(false, false)
+		compressedData, err := comp.writeBrotliData(false, false)
 		if err != nil {
 			return copied, err
 		}
@@ -275,7 +275,7 @@ func (w *BrotliWriter) Write(buffer []byte) (int, error) {
 
 	remaining := len(buffer)
 	if remaining > 0 {
-		comp.CopyInputToRingBuffer(buffer)
+		comp.copyInputToRingBuffer(buffer)
 		w.inRingBuffer += remaining
 		copied += remaining
 	}
@@ -284,11 +284,11 @@ func (w *BrotliWriter) Write(buffer []byte) (int, error) {
 }
 
 func (w *BrotliWriter) Close() error {
-	compressedData, err := w.compressor.WriteBrotliData(true, false)
+	compressedData, err := w.compressor.writeBrotliData(true, false)
 	if err != nil {
 		return err
 	}
-	w.compressor.Free()
+	w.compressor.free()
 
 	_, err = w.writer.Write(compressedData)
 	if err != nil {
