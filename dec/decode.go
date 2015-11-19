@@ -6,6 +6,24 @@ package dec
 
 typedef uint8_t dict[122784];
 dict* decodeBrotliDictionary;
+
+// Wrap the C method to avoid modifying pointers in Go-allocated memory
+BrotliResult BrotliDecompressStream_Wrapper(
+	size_t* available_in, const uint8_t* input,
+	size_t* available_out, uint8_t* output,
+    size_t* total_out, BrotliState* s
+) {
+	// Make copy of nextOut to avoid leaking back to Go
+	const uint8_t* next_in = input;
+	uint8_t* next_out = output;
+
+	return BrotliDecompressStream(
+		available_in, &next_in,
+		available_out, &next_out,
+		total_out, s
+	);
+}
+
 */
 import "C"
 
@@ -99,7 +117,6 @@ func (r *BrotliReader) Read(p []byte) (n int, err error) {
 	// Prepare arguments
 	maxOutput := len(p)
 	availableOut := C.size_t(maxOutput)
-	nextOut := (*C.uint8_t)(unsafe.Pointer(&p[0]))
 
 	for availableOut > 0 && r.err == nil {
 		// Read more compressed data
@@ -120,12 +137,12 @@ func (r *BrotliReader) Read(p []byte) (n int, err error) {
 
 		if r.availableIn > 0 || r.needOutput {
 			// Decompress
-			nextIn := (*C.uint8_t)(unsafe.Pointer(&r.buffer[r.bufferRead-int(r.availableIn)]))
-			result := C.BrotliDecompressStream(
+			inputPosition := r.bufferRead - int(r.availableIn)
+			result := C.BrotliDecompressStream_Wrapper(
 				&r.availableIn,
-				&nextIn,
+				(*C.uint8_t)(unsafe.Pointer(&r.buffer[inputPosition])),
 				&availableOut,
-				&nextOut,
+				(*C.uint8_t)(unsafe.Pointer(&p[0])),
 				&r.totalOut,
 				(*C.BrotliState)(unsafe.Pointer(&r.state[0])),
 			)
