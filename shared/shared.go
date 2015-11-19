@@ -3,7 +3,7 @@
 package shared
 
 /*
-#import "dictionary.h"
+#include "dictionary.h"
 */
 import "C"
 
