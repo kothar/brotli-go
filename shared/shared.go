@@ -1,5 +1,4 @@
-// Code shared between the enc and dec packages which would otherwise cause
-// duplicate symbols during linking
+// Code shared between the enc and dec packages
 package shared
 
 /*

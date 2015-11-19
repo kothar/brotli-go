@@ -1,4 +1,4 @@
-// Go wrapper for the Brotli C decoder implementation
+// Brotli decoder bindings
 package dec
 
 /*

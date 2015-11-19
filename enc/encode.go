@@ -1,4 +1,4 @@
-// Brotli compression library bindings for the encoder
+// Brotli encoder bindings
 package enc
 
 /*
@@ -62,6 +62,7 @@ func init() {
 	C.kBrotliDictionary = (*C.dict)(shared.GetDictionary())
 }
 
+// The operation mode of the compressor
 type Mode int
 
 const (
@@ -96,10 +97,10 @@ func NewBrotliParams() *BrotliParams {
 	return params
 }
 
+// The operating mode of the compressor (GENERIC, TEXT or FONT)
 func (p *BrotliParams) Mode() Mode {
 	return Mode(p.c.mode)
 }
-
 func (p *BrotliParams) SetMode(value Mode) {
 	p.c.mode = C.enum_Mode(value)
 }
@@ -109,7 +110,6 @@ func (p *BrotliParams) SetMode(value Mode) {
 func (p *BrotliParams) Quality() int {
 	return int(p.c.quality)
 }
-
 func (p *BrotliParams) SetQuality(value int) {
 	p.c.quality = C.int(value)
 }
@@ -118,7 +118,6 @@ func (p *BrotliParams) SetQuality(value int) {
 func (p *BrotliParams) Lgwin() int {
 	return int(p.c.lgwin)
 }
-
 func (p *BrotliParams) SetLgwin(value int) {
 	p.c.lgwin = C.int(value)
 }
@@ -128,7 +127,6 @@ func (p *BrotliParams) SetLgwin(value int) {
 func (p *BrotliParams) Lgblock() int {
 	return int(p.c.lgblock)
 }
-
 func (p *BrotliParams) SetLgblock(value int) {
 	p.c.lgblock = C.int(value)
 }
@@ -136,7 +134,7 @@ func (p *BrotliParams) SetLgblock(value int) {
 // Maximum output size based on
 // https://github.com/google/brotli/blob/24469b81d604ddf1976c3e4b633523bd8f6f631c/enc/encode_parallel.cc#L233
 // There doesn't appear to be any documentation of what this calculation is based on.
-func (p *BrotliParams) MaxOutputSize(inputLength int) int {
+func (p *BrotliParams) maxOutputSize(inputLength int) int {
 	return int(C.BrotliMaxOutputSize(p.c, C.size_t(inputLength)))
 }
 
@@ -151,7 +149,7 @@ func CompressBuffer(params *BrotliParams, inputBuffer []byte, encodedBuffer []by
 	}
 
 	inputLength := len(inputBuffer)
-	maxOutSize := params.MaxOutputSize(inputLength)
+	maxOutSize := params.maxOutputSize(inputLength)
 
 	if len(encodedBuffer) < maxOutSize {
 		encodedBuffer = make([]byte, maxOutSize)
