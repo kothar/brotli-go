@@ -91,9 +91,16 @@ func TestGCErrors(T *testing.T) {
 	reader := NewBrotliReader(bytes.NewReader(output))
 	decoded := make([]byte, 18123)
 	var count int
-	for read, err := reader.Read(decoded); err != io.EOF; {
+	for {
+		read, err := reader.Read(decoded)
 		if err != nil {
-			T.Fatal(err)
+			if err == io.EOF {
+				if read == 0 {
+					break
+				}
+			} else {
+				T.Fatal(err)
+			}
 		}
 
 		count += read
