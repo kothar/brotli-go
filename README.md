@@ -63,7 +63,7 @@ import (
 )
 
 func main() {
-  compressedWriter := os.OpenFile("data.bin.bro", os.O_CREATE|os.O_WRONLY, 0644)
+  compressedWriter,_ := os.OpenFile("data.bin.bro", os.O_CREATE|os.O_WRONLY, 0644)
 
   brotliWriter := enc.NewBrotliWriter(nil, compressedWriter)
   // BrotliWriter will close writer passed as argument if it implements io.Closer
@@ -72,7 +72,7 @@ func main() {
   fileReader, _ := os.Open("data.bin")
   defer fileReader.Close()
 
-  io.Copy(fileReader, brotliWriter)
+  io.Copy(brotliWriter,fileReader)
 }
 ```
 
@@ -89,9 +89,9 @@ func main() {
   brotliReader := dec.NewBrotliReader(archiveReader)
   defer brotliReader.Close()
 
-  decompressedWriter := os.OpenFile("data.bin.unbro", os.O_CREATE|os.O_WRONLY, 0644)
+  decompressedWriter,_ := os.OpenFile("data.bin.unbro", os.O_CREATE|os.O_WRONLY, 0644)
   defer decompressedWriter.Close()
-  io.Copy(brotliReader, decompressedWriter)
+  io.Copy(decompressedWriter, brotliReader)
 }
 ```
 
