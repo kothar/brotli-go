@@ -50,7 +50,7 @@ func TestStreamEncode(T *testing.T) {
 	inputSize := len(input1)
 	log.Printf("q=%d, inputSize=%d\n", params.Quality(), inputSize)
 
-	for lgwin := 16; lgwin <= 22; lgwin += 1 {
+	for lgwin := 16; lgwin <= 22; lgwin++ {
 		params.SetLgwin(lgwin)
 		compressor := newBrotliCompressor(params)
 		defer compressor.free()
@@ -85,7 +85,7 @@ func TestStreamEncode(T *testing.T) {
 
 		fullStreamOutput := streamBuffer.Bytes()
 		if !bytes.Equal(fullStreamOutput, fullBufferOutput) {
-			T.Fatal("for lgwin %d, stream compression didn't give same result as buffer compression", params.Lgwin())
+			T.Fatalf("for lgwin %d, stream compression didn't give same result as buffer compression", params.Lgwin())
 		}
 
 		// then using the high-level Writer interface
@@ -96,7 +96,7 @@ func TestStreamEncode(T *testing.T) {
 
 		fullWriterOutput := writerBuffer.Bytes()
 		if !bytes.Equal(fullWriterOutput, fullBufferOutput) {
-			T.Fatal("for lgwin %d, stream writer compression didn't give same result as buffer compression", params.Lgwin())
+			T.Fatalf("for lgwin %d, stream writer compression didn't give same result as buffer compression", params.Lgwin())
 		}
 
 		outputSize := len(fullStreamOutput)

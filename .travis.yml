@@ -68,6 +68,8 @@ install:
   # be pre-compiling them just yet
   # -v = verbose, the go tools are disturbingly silent by default
   - go get -d -v ./...
+  - go get -u github.com/golang/lint/golint
+  - go get -u golang.org/x/tools/cmd/goimports
 script:
   # gox lets us cross-compile pretty easily
   - go get github.com/mitchellh/gox
@@ -76,5 +78,9 @@ script:
   # for an ldflags explanation, cf. https://github.com/kothar/brotli-go/issues/1#issuecomment-156091015
   # BROTLI_EXT is just handy to be able to call `file` later
   - if [[ $BROTLI_OS = windows ]]; then export BROTLI_LDFLAGS="$BROTLI_LDFLAGS -extldflags \"-Wl,--allow-multiple-definition\""; export BROTLI_EXT=".exe"; fi
-  - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then go test -v ./...; fi
+  - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then go vet ./...; fi
+  - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then diff <(goimports -d .) <(printf ""); fi
+  - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then diff <(golint ./...) <(printf ""); fi
+  - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then go test -v -cpu=2 ./...; fi
+  - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then go test -v -cpu=1,2,4 -short -race ./...; fi
   - (cd gbr && gox -osarch "$OSARCH" -ldflags "$BROTLI_LDFLAGS" -cgo -output="gbr" && file gbr${BROTLI_EXT})

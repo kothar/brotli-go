@@ -1,5 +1,5 @@
-// Brotli encoder bindings
-package enc
+// Package enc provides Brotli encoder bindings
+package enc // import "gopkg.in/kothar/brotli-go.v0/enc"
 
 /*
 // for memcpy
@@ -52,9 +52,10 @@ import (
 	"gopkg.in/kothar/brotli-go.v0/shared"
 )
 
+// Errors which may be returned when encoding
 var (
-	ErrInputLargerThanBlockSize error = errors.New("data copied to ring buffer larger than brotli compressor block size")
-	ErrBrotliCompression        error = errors.New("brotli compression error")
+	errInputLargerThanBlockSize = errors.New("data copied to ring buffer larger than brotli compressor block size")
+	errBrotliCompression        = errors.New("brotli compression error")
 )
 
 func init() {
@@ -62,24 +63,25 @@ func init() {
 	C.kBrotliDictionary = (*C.dict)(shared.GetDictionary())
 }
 
-// The operation mode of the compressor
+// Mode defines the operation mode of the compressor
 type Mode int
 
 const (
-	// Default compression mode. The compressor does not know anything in
+	// GENERIC is the default compression mode. The compressor does not know anything in
 	// advance about the properties of the input.
 	GENERIC Mode = iota
-	// Compression mode for UTF-8 format text input.
+	// TEXT is a compression mode for UTF-8 format text input.
 	TEXT
-	// Compression mode used in WOFF 2.0.
+	// FONT is a compression mode used in WOFF 2.0.
 	FONT
 )
 
+// BrotliParams describes the settings used when encoding using Brotli
 type BrotliParams struct {
 	c C.struct_CBrotliParams
 }
 
-// Instantiates the compressor parameters with the default settings
+// NewBrotliParams instantiates the compressor parameters with the default settings
 func NewBrotliParams() *BrotliParams {
 	params := &BrotliParams{C.struct_CBrotliParams{
 		mode:    C.MODE_GENERIC,
@@ -97,36 +99,44 @@ func NewBrotliParams() *BrotliParams {
 	return params
 }
 
-// The operating mode of the compressor (GENERIC, TEXT or FONT)
+// Mode returns the current operating mode of the compressor
 func (p *BrotliParams) Mode() Mode {
 	return Mode(p.c.mode)
 }
+
+// SetMode controls the operating mode of the compressor (GENERIC, TEXT or FONT)
 func (p *BrotliParams) SetMode(value Mode) {
 	p.c.mode = C.enum_Mode(value)
 }
 
-// Controls the compression-speed vs compression-density tradeoffs. The higher
-// the quality, the slower the compression. Range is 0 to 11. Default is 11.
+// Quality returns the quality setting of the compressor
 func (p *BrotliParams) Quality() int {
 	return int(p.c.quality)
 }
+
+// SetQuality controls the compression-speed vs compression-density tradeoffs. The higher
+// the quality, the slower the compression. Range is 0 to 11. Default is 11.
 func (p *BrotliParams) SetQuality(value int) {
 	p.c.quality = C.int(value)
 }
 
-// Base 2 logarithm of the sliding window size. Range is 10 to 24. Default is 22.
+// Lgwin returns the current sliding window size setting.
 func (p *BrotliParams) Lgwin() int {
 	return int(p.c.lgwin)
 }
+
+// SetLgwin sets the base 2 logarithm of the sliding window size. Range is 10 to 24. Default is 22.
 func (p *BrotliParams) SetLgwin(value int) {
 	p.c.lgwin = C.int(value)
 }
 
-// Base 2 logarithm of the maximum input block size. Range is 16 to 24.
-// If set to 0 (default), the value will be set based on the quality.
+// Lgblock returns the current maximum input block size setting.
 func (p *BrotliParams) Lgblock() int {
 	return int(p.c.lgblock)
 }
+
+// SetLgblock sets the base 2 logarithm of the maximum input block size. Range is 16 to 24.
+// If set to 0 (default), the value will be set based on the quality.
 func (p *BrotliParams) SetLgblock(value int) {
 	p.c.lgblock = C.int(value)
 }
@@ -138,8 +148,9 @@ func (p *BrotliParams) maxOutputSize(inputLength int) int {
 	return int(C.BrotliMaxOutputSize(p.c, C.size_t(inputLength)))
 }
 
-// Compress a buffer. Uses encodedBuffer as the destination buffer unless it is too small,
-// in which case a new buffer is allocated.
+// CompressBuffer compresses a single block of data. It uses encodedBuffer as
+// the destination buffer unless it is too small, in which case a new buffer
+// is allocated.
 // Default parameters are used if params is nil.
 // Returns the slice of the encodedBuffer containing the output, or an error.
 func CompressBuffer(params *BrotliParams, inputBuffer []byte, encodedBuffer []byte) ([]byte, error) {
@@ -158,7 +169,7 @@ func CompressBuffer(params *BrotliParams, inputBuffer []byte, encodedBuffer []by
 	encodedLength := C.size_t(len(encodedBuffer))
 	result := C.CBrotliCompressBuffer(params.c, C.size_t(inputLength), toC(inputBuffer), &encodedLength, toC(encodedBuffer))
 	if result == 0 {
-		return nil, ErrBrotliCompression
+		return nil, errBrotliCompression
 	}
 	return encodedBuffer[0:encodedLength], nil
 }
@@ -208,7 +219,7 @@ func (bp *brotliCompressor) writeBrotliData(isLast bool, forceFlush bool) ([]byt
 	var output *C.uint8_t
 	success := C.CBrotliCompressorWriteBrotliData(bp.c, C.bool(isLast), C.bool(forceFlush), &outSize, &output)
 	if success == false {
-		return nil, ErrInputLargerThanBlockSize
+		return nil, errInputLargerThanBlockSize
 	}
 
 	// resize buffer if output is larger than we've anticipated
@@ -232,6 +243,8 @@ func brotliCompressorFinalizer(bp *brotliCompressor) {
 	bp.free()
 }
 
+// BrotliWriter implements the io.Writer interface, compressing the stream
+// to an output Writer using Brotli.
 type BrotliWriter struct {
 	compressor *brotliCompressor
 	writer     io.Writer
@@ -240,6 +253,8 @@ type BrotliWriter struct {
 	inRingBuffer int
 }
 
+// NewBrotliWriter instantiates a new BrotliWriter with the provided compression
+// parameters and output Writer
 func NewBrotliWriter(params *BrotliParams, writer io.Writer) *BrotliWriter {
 	return &BrotliWriter{
 		compressor:   newBrotliCompressor(params),
@@ -283,6 +298,8 @@ func (w *BrotliWriter) Write(buffer []byte) (int, error) {
 	return copied, nil
 }
 
+// Close cleans up the resources used by the Brotli encoder for this
+// stream. If the output buffer is an io.Closer, it will also be closed.
 func (w *BrotliWriter) Close() error {
 	compressedData, err := w.compressor.writeBrotliData(true, false)
 	if err != nil {
