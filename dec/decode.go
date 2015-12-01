@@ -1,5 +1,5 @@
-// Brotli decoder bindings
-package dec
+// Package dec provides Brotli decoder bindings
+package dec // import "gopkg.in/kothar/brotli-go.v0/dec"
 
 /*
 #include "./decode.h"
@@ -41,7 +41,7 @@ func init() {
 	C.decodeBrotliDictionary = (*C.dict)(shared.GetDictionary())
 }
 
-// Decompress a Brotli-encoded buffer. Uses decodedBuffer as the destination buffer unless it is too small,
+// DecompressBuffer decompress a Brotli-encoded buffer. Uses decodedBuffer as the destination buffer unless it is too small,
 // in which case a new buffer is allocated.
 // Returns the slice of the decodedBuffer containing the output, or an error.
 func DecompressBuffer(encodedBuffer []byte, decodedBuffer []byte) ([]byte, error) {
@@ -91,7 +91,7 @@ func toC(array []byte) *C.uint8_t {
 // cf. https://github.com/youtube/vitess/blob/071d0e649f22034ad4285c7431ac0a2c9c20090d/go/cgzip/zstream.go#L86-L89
 type cBrotliState [unsafe.Sizeof(C.BrotliState{})]C.char
 
-// Decompresses a Brotli-encoded stream using the io.Reader interface
+// BrotliReader decompresses a Brotli-encoded stream using the io.Reader interface
 type BrotliReader struct {
 	reader io.Reader
 	state  cBrotliState
@@ -183,7 +183,7 @@ func (r *BrotliReader) Close() error {
 	return r.err
 }
 
-// Returns a Reader that decompresses the stream from another reader.
+// NewBrotliReader returns a Reader that decompresses the stream from another reader.
 //
 // Ensure that you Close the stream when you are finished in order to clean up the
 // Brotli decompression state.
@@ -193,7 +193,7 @@ func NewBrotliReader(stream io.Reader) *BrotliReader {
 	return NewBrotliReaderSize(stream, 128*1024)
 }
 
-// The same as NewBrotliReader, but allows the internal buffer size to be set.
+// NewBrotliReaderSize is the same as NewBrotliReader, but allows the internal buffer size to be set.
 //
 // The size of the internal buffer may be specified which will hold compressed data
 // before being read by the decompressor

@@ -1,4 +1,4 @@
-// Bindings for the Brotli compression library
+// Package brotli contains bindings for the Brotli compression library
 //
 // This is a very basic Cgo wrapper for the enc and dec directories from the Brotli sources. I've made a few minor changes to get
 // things working with Go.
