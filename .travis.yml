@@ -78,7 +78,7 @@ script:
   # for an ldflags explanation, cf. https://github.com/kothar/brotli-go/issues/1#issuecomment-156091015
   # BROTLI_EXT is just handy to be able to call `file` later
   - if [[ $BROTLI_OS = windows ]]; then export BROTLI_LDFLAGS="$BROTLI_LDFLAGS -extldflags \"-Wl,--allow-multiple-definition\""; export BROTLI_EXT=".exe"; fi
-  - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then go vet ./... -v ./...; fi
+  - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then go vet ./...; fi
   - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then diff <(goimports -d .) <(printf ""); fi
   - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then diff <(golint ./...) <(printf ""); fi
   - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then go test -v -cpu=2 ./...; fi
