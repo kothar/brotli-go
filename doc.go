@@ -6,7 +6,7 @@
 // 1. The default dictionary has been extracted to a separate 'shared' package to allow linking the enc and dec cgo modules if you use both. Otherwise there are duplicate symbols, as described in the dictionary.h header files.
 //
 // 2. The dictionary variable name for the dec package has been modified for the same reason, to avoid linker collisions.
-package brotli
+package brotli // import "gopkg.in/kothar/brotli-go.v0"
 
 import (
 	"gopkg.in/kothar/brotli-go.v0/dec"
