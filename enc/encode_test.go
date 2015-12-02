@@ -2,9 +2,10 @@ package enc
 
 import (
 	"bytes"
-	"log"
 	"strings"
 	"testing"
+
+	"gopkg.in/kothar/brotli-go.v0/dec"
 )
 
 const (
@@ -16,7 +17,7 @@ func TestBufferSizes(T *testing.T) {
 	params.SetQuality(testQuality)
 
 	input1 := []byte(strings.Repeat("The quick brown fox jumps over the lazy dog", 100000))
-	log.Printf("q=%d, inputSize=%d\n", params.Quality(), len(input1))
+	T.Logf("q=%d, inputSize=%d\n", params.Quality(), len(input1))
 
 	output1 := make([]byte, len(input1)*2)
 	_, err := CompressBuffer(params, input1, output1)
@@ -48,7 +49,7 @@ func TestStreamEncode(T *testing.T) {
 
 	input1 := []byte(strings.Repeat("The quick brown fox jumps over the lazy dog", 100000))
 	inputSize := len(input1)
-	log.Printf("q=%d, inputSize=%d\n", params.Quality(), inputSize)
+	T.Logf("q=%d, inputSize=%d\n", params.Quality(), inputSize)
 
 	for lgwin := 16; lgwin <= 22; lgwin++ {
 		params.SetLgwin(lgwin)
@@ -100,6 +101,58 @@ func TestStreamEncode(T *testing.T) {
 		}
 
 		outputSize := len(fullStreamOutput)
-		log.Printf("lgwin=%d, rounds=%d, output=%d (%.4f%% of input size)\n", params.Lgwin(), rounds, outputSize, float32(outputSize)*100.0/float32(inputSize))
+		T.Logf("lgwin=%d, rounds=%d, output=%d (%.4f%% of input size)\n", params.Lgwin(), rounds, outputSize, float32(outputSize)*100.0/float32(inputSize))
+	}
+}
+
+func TestFlush(T *testing.T) {
+	params := NewBrotliParams()
+	params.SetQuality(testQuality)
+
+	input1 := []byte(strings.Repeat("The quick brown fox jumps over the lazy dog", 10000))
+	inputSize := len(input1)
+
+	for _, blockSize := range []int{324, 1623, 6125, 21126} {
+		T.Logf("q=%d, inputSize=%d, blockSize=%d\n", params.Quality(), inputSize, blockSize)
+
+		writerBuffer := new(bytes.Buffer)
+		writer := NewBrotliWriter(params, writerBuffer)
+		outputLength := 0
+
+		// Write small blocks
+		for pos := 0; pos < len(input1); pos += blockSize {
+			end := pos + blockSize
+			if end > len(input1) {
+				end = len(input1)
+			}
+			if _, err := writer.Write(input1[pos:end]); err != nil {
+				T.Error(err)
+			}
+
+			newOutputLength := writerBuffer.Len()
+			if newOutputLength == outputLength {
+				// Nothing was written, attempt to flush
+				if err := writer.Flush(); err != nil {
+					T.Error(err)
+				}
+				newOutputLength = writerBuffer.Len()
+				if newOutputLength == outputLength {
+					T.Error("Flush did not produce any additional output")
+				}
+			}
+			outputLength = newOutputLength
+		}
+		if err := writer.Close(); err != nil {
+			T.Error(err)
+		}
+
+		// Check the output is valid
+		decoded, err := dec.DecompressBuffer(writerBuffer.Bytes(), nil)
+		if err != nil {
+			T.Error(err)
+		}
+		if !bytes.Equal(decoded, input1) {
+			T.Errorf("Flushed output does not decode to same bytes as input")
+		}
 	}
 }
