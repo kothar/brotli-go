@@ -113,4 +113,4 @@ Links
 License
 ---
 
-Brotli and these bindings are open-sourced under the Apache License, Version 2.0, see the LICENSE file.
+Brotli and these bindings are open-sourced under the MIT License - see the LICENSE file.

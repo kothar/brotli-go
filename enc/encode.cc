@@ -1,17 +1,9 @@
-// Copyright 2013 Google Inc. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/* Copyright 2013 Google Inc. All Rights Reserved.
+
+   Distributed under MIT license.
+   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
+*/
+
 // Implementation of Brotli compressor.
 
 #include "./encode.h"
@@ -538,20 +530,24 @@ bool BrotliCompressor::WriteMetadata(const size_t input_size,
   if (input_size > (1 << 24) || input_size + 6 > *encoded_size) {
     return false;
   }
+  uint64_t hdr_buffer_data[2];
+  uint8_t* hdr_buffer = reinterpret_cast<uint8_t*>(&hdr_buffer_data[0]);
   int storage_ix = last_byte_bits_;
-  encoded_buffer[0] = last_byte_;
-  WriteBits(1, 0, &storage_ix, encoded_buffer);
-  WriteBits(2, 3, &storage_ix, encoded_buffer);
-  WriteBits(1, 0, &storage_ix, encoded_buffer);
+  hdr_buffer[0] = last_byte_;
+  WriteBits(1, 0, &storage_ix, hdr_buffer);
+  WriteBits(2, 3, &storage_ix, hdr_buffer);
+  WriteBits(1, 0, &storage_ix, hdr_buffer);
   if (input_size == 0) {
-    WriteBits(2, 0, &storage_ix, encoded_buffer);
+    WriteBits(2, 0, &storage_ix, hdr_buffer);
     *encoded_size = (storage_ix + 7) >> 3;
+    memcpy(encoded_buffer, hdr_buffer, *encoded_size);
   } else {
     int nbits = Log2Floor(static_cast<uint32_t>(input_size) - 1) + 1;
     int nbytes = (nbits + 7) / 8;
-    WriteBits(2, nbytes, &storage_ix, encoded_buffer);
-    WriteBits(8 * nbytes, input_size - 1, &storage_ix, encoded_buffer);
+    WriteBits(2, nbytes, &storage_ix, hdr_buffer);
+    WriteBits(8 * nbytes, input_size - 1, &storage_ix, hdr_buffer);
     size_t hdr_size = (storage_ix + 7) >> 3;
+    memcpy(encoded_buffer, hdr_buffer, hdr_size);
     memcpy(&encoded_buffer[hdr_size], input_buffer, input_size);
     *encoded_size = hdr_size + input_size;
   }
