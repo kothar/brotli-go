@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"testing"
 
 	"gopkg.in/kothar/brotli-go.v0/dec"
@@ -56,16 +57,29 @@ func TestRoundtrip(T *testing.T) {
 		"enc/encode.cc",
 		"shared/dictionary.h",
 		"dec/decode.c",
+		"random",
 	}
 
 	for _, file := range inputs {
+		var err error
+		var input []byte
 
-		input, err := ioutil.ReadFile(file)
-		if err != nil {
-			T.Error(err)
+		r := rand.NewSource(0xDAAD)
+
+		if file == "random" {
+			input = make([]byte, 1024*1024*2)
+			for i, _ := range input {
+				input[i] = byte(r.Int63())
+			}
+		} else {
+			input, err = ioutil.ReadFile(file)
+			if err != nil {
+				T.Error(err)
+			}
 		}
 
-		for _, quality := range []int{1, 6, 9, 11} {
+		// for _, quality := range []int{1, 6, 9, 11} {
+		for _, quality := range []int{1} {
 			T.Logf("Roundtrip testing %s at quality %d", file, quality)
 
 			params := enc.NewBrotliParams()
