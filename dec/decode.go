@@ -118,7 +118,7 @@ func (r *BrotliReader) Read(p []byte) (n int, err error) {
 	maxOutput := len(p)
 	availableOut := C.size_t(maxOutput)
 
-	for availableOut > 0 && r.err == nil {
+	if r.err == nil {
 		// Read more compressed data
 		if r.availableIn == 0 && !r.needOutput {
 			read, err := r.reader.Read(r.buffer)
@@ -148,6 +148,7 @@ func (r *BrotliReader) Read(p []byte) (n int, err error) {
 			)
 
 			n = maxOutput - int(availableOut)
+
 			switch result {
 			case C.BROTLI_RESULT_SUCCESS:
 				r.err = io.EOF
@@ -166,6 +167,7 @@ func (r *BrotliReader) Read(p []byte) (n int, err error) {
 			}
 		}
 	}
+
 	return n, r.err
 }
 

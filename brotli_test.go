@@ -59,8 +59,10 @@ func TestRoundtrip(T *testing.T) {
 	}
 
 	for _, file := range inputs {
+		var err error
+		var input []byte
 
-		input, err := ioutil.ReadFile(file)
+		input, err = ioutil.ReadFile(file)
 		if err != nil {
 			T.Error(err)
 		}
@@ -113,8 +115,9 @@ func testDecompressBuffer(input, bro []byte, T *testing.T) {
 }
 
 func testDecompressStream(input []byte, reader io.Reader, T *testing.T) {
-	// Stream decompression
-	streamUnbro, err := ioutil.ReadAll(dec.NewBrotliReader(reader))
+	// Stream decompression - use ridiculously small buffer on purpose to
+	// test NEEDS_MORE_INPUT state, cf. https://github.com/kothar/brotli-go/issues/28
+	streamUnbro, err := ioutil.ReadAll(dec.NewBrotliReaderSize(reader, 128))
 	if err != nil {
 		T.Error(err)
 	}
