@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"testing"
 
 	"gopkg.in/kothar/brotli-go.v0/dec"
@@ -57,29 +56,18 @@ func TestRoundtrip(T *testing.T) {
 		"enc/encode.cc",
 		"shared/dictionary.h",
 		"dec/decode.c",
-		"random",
 	}
 
 	for _, file := range inputs {
 		var err error
 		var input []byte
 
-		r := rand.NewSource(0xDAAD)
-
-		if file == "random" {
-			input = make([]byte, 1024*1024*2)
-			for i, _ := range input {
-				input[i] = byte(r.Int63())
-			}
-		} else {
-			input, err = ioutil.ReadFile(file)
-			if err != nil {
-				T.Error(err)
-			}
+		input, err = ioutil.ReadFile(file)
+		if err != nil {
+			T.Error(err)
 		}
 
-		// for _, quality := range []int{1, 6, 9, 11} {
-		for _, quality := range []int{1} {
+		for _, quality := range []int{1, 6, 9, 11} {
 			T.Logf("Roundtrip testing %s at quality %d", file, quality)
 
 			params := enc.NewBrotliParams()
@@ -127,8 +115,9 @@ func testDecompressBuffer(input, bro []byte, T *testing.T) {
 }
 
 func testDecompressStream(input []byte, reader io.Reader, T *testing.T) {
-	// Stream decompression
-	streamUnbro, err := ioutil.ReadAll(dec.NewBrotliReader(reader))
+	// Stream decompression - use ridiculously small buffer on purpose to
+	// test NEEDS_MORE_INPUT state, cf. https://github.com/kothar/brotli-go/issues/28
+	streamUnbro, err := ioutil.ReadAll(dec.NewBrotliReaderSize(reader, 128))
 	if err != nil {
 		T.Error(err)
 	}
