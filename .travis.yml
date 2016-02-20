@@ -10,7 +10,10 @@
 # but does not support cgo afaict, so we're only using
 # it to get gox to do our bidding.
 language: go
-go: 1.5.1
+go:
+  - 1.5.1
+  - 1.6
+  - tip
 
 matrix:
   # I'm not sure why travis insists on running a build with os=linux and an empty
