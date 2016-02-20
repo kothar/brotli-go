@@ -87,15 +87,13 @@ func toC(array []byte) *C.uint8_t {
 	return (*C.uint8_t)(unsafe.Pointer(&array[0]))
 }
 
-// don't let the go 1.5.1 GC put its dirty paws in our beautiful C struct (#14)
-// cf. https://github.com/youtube/vitess/blob/071d0e649f22034ad4285c7431ac0a2c9c20090d/go/cgzip/zstream.go#L86-L89
-type cBrotliState [unsafe.Sizeof(C.BrotliState{})]C.char
-
 // BrotliReader decompresses a Brotli-encoded stream using the io.Reader interface
 type BrotliReader struct {
 	reader io.Reader
-	state  cBrotliState
 	closed bool
+
+	// C-allocated state. Must be cleaned up by calling Close() or a memory leak will occur
+	state unsafe.Pointer
 
 	needOutput bool  // State bounces between needing input and output
 	err        error // Persistent error
@@ -144,7 +142,7 @@ func (r *BrotliReader) Read(p []byte) (n int, err error) {
 				&availableOut,
 				(*C.uint8_t)(unsafe.Pointer(&p[0])),
 				&r.totalOut,
-				(*C.BrotliState)(unsafe.Pointer(&r.state[0])),
+				(*C.BrotliState)(r.state),
 			)
 
 			n = maxOutput - int(availableOut)
@@ -176,7 +174,8 @@ func (r *BrotliReader) Close() error {
 	if r.closed {
 		return r.err
 	}
-	C.BrotliStateCleanup((*C.BrotliState)(unsafe.Pointer(&r.state[0])))
+	C.BrotliStateCleanup((*C.BrotliState)(r.state))
+	C.BrotliDestroyState((*C.BrotliState)(r.state))
 	r.closed = true
 	if r.err == nil || r.err == io.EOF {
 		r.err = io.ErrClosedPipe // Make sure future operations fail
@@ -205,7 +204,8 @@ func NewBrotliReaderSize(stream io.Reader, size int) *BrotliReader {
 		buffer: make([]byte, size),
 	}
 
-	C.BrotliStateInit((*C.BrotliState)(unsafe.Pointer(&r.state[0])))
+	r.state = unsafe.Pointer(C.BrotliCreateState(nil, nil, nil))
+	C.BrotliStateInit((*C.BrotliState)(r.state))
 
 	runtime.SetFinalizer(r, func(c io.Closer) { c.Close() })
 
