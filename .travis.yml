@@ -11,9 +11,7 @@
 # it to get gox to do our bidding.
 language: go
 go:
-  - 1.5.3
   - 1.6
-  - tip
 
 matrix:
   # I'm not sure why travis insists on running a build with os=linux and an empty
