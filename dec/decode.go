@@ -166,6 +166,9 @@ func (r *BrotliReader) Read(p []byte) (n int, err error) {
 		}
 	}
 
+	if r.err == io.EOF && n > 0 {
+		return n, nil
+	}
 	return n, r.err
 }
 

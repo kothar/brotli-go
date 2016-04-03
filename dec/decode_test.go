@@ -112,3 +112,29 @@ func TestGCErrors(T *testing.T) {
 		}
 	}
 }
+
+func TestEOFBehavior(T *testing.T) {
+	input := []byte{1, 2, 3, 4}
+	output := make([]byte, len(input)*12)
+
+	params := enc.NewBrotliParams()
+	params.SetQuality(4)
+
+	output, err := enc.CompressBuffer(params, input, output)
+	if err != nil {
+		T.Fatal(err)
+	}
+
+	// Decompress as a stream
+	reader := NewBrotliReader(bytes.NewReader(output))
+	receiver := make([]byte, len(input))
+
+	readBytes, err := reader.Read(receiver)
+	if err != nil {
+		T.Fatal(err)
+	}
+
+	if readBytes != len(input) {
+		T.Fatalf("Expected to read %d bytes, read %d", len(input), readBytes)
+	}
+}
