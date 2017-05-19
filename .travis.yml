@@ -71,6 +71,7 @@ install:
   # install gvm
   - bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
   - source /home/travis/.gvm/scripts/gvm
+  - gvm listall
   - gvm install ${GO_VERSION}
   - gvm use ${GO_VERSION}
 
