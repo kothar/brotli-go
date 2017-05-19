@@ -10,11 +10,11 @@
 # but does not support cgo afaict, so we're only using
 # it to get gox to do our bidding.
 language: go
-go:
-  - 1.8.x
-  - 1.7.x
-  - 1.6.x
-  - 1.5.x
+env:
+  - GO_VERSION=1.8.1
+  - GO_VERSION=1.7.5
+  - GO_VERSION=1.6.4
+  - GO_VERSION=1.5.4
 
 matrix:
   # I'm not sure why travis insists on running a build with os=linux and an empty
@@ -68,6 +68,11 @@ before_install:
   - rm -rf ${TRAVIS_BUILD_DIR}
   - export TRAVIS_BUILD_DIR=${BROTLI_CANONICAL_IMPORT}
 install:
+  # install gvm
+  - bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
+  - gvm install $GO_VERSION -B
+  - gvm use $GO_VERSION
+  
   # -d = download only, in some cases we're cross-compiling so we don't want to
   # be pre-compiling them just yet
   # -v = verbose, the go tools are disturbingly silent by default
