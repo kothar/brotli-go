@@ -12,9 +12,9 @@
 language: go
 env:
   - GO_VERSION=1.8.1
-  - GO_VERSION="1.7.5 -B"
-  - GO_VERSION="1.6.4 -B"
-  - GO_VERSION="1.5.4 -B"
+  - GO_VERSION=1.7.5
+  - GO_VERSION=1.6.4
+  - GO_VERSION=1.5.4
 
 matrix:
   # I'm not sure why travis insists on running a build with os=linux and an empty
@@ -71,8 +71,8 @@ install:
   # install gvm
   - bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
   - source /home/travis/.gvm/scripts/gvm
-  - gvm install $GO_VERSION
-  - gvm use $GO_VERSION
+  - gvm install ${GO_VERSION} -B
+  - gvm use ${GO_VERSION}
 
   # -d = download only, in some cases we're cross-compiling so we don't want to
   # be pre-compiling them just yet
