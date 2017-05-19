@@ -11,10 +11,10 @@
 # it to get gox to do our bidding.
 language: go
 go:
-  - 1.8.1
-  - 1.7.5
-  - 1.6.4
-  - 1.5.4
+  - 1.8.x
+  - 1.7.x
+  - 1.6.x
+  - 1.5.x
 
 matrix:
   # I'm not sure why travis insists on running a build with os=linux and an empty
