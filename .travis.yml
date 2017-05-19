@@ -14,7 +14,6 @@ env:
   - GO_VERSION=go1.8.1
   - GO_VERSION=go1.7.5
   - GO_VERSION=go1.6.4
-  - GO_VERSION=go1.5.4
 
 matrix:
   # I'm not sure why travis insists on running a build with os=linux and an empty
@@ -29,17 +28,17 @@ matrix:
    # builds run slower, but it's really handy because cross-compiling OSX
    # binaries got increasingly hard over the years
    - os: osx
-     env: BROTLI_OS=darwin BROTLI_ARCH=amd64 GO_VERSION=go1.8.1
+     env: BROTLI_OS=darwin BROTLI_ARCH=amd64
    # thankfully, ubuntu 12.04 has a multilib variant of gcc readily available
    - os: linux
-     env: BROTLI_OS=linux BROTLI_ARCH=386 GO_VERSION=go1.8.1
+     env: BROTLI_OS=linux BROTLI_ARCH=386
      addons:
        apt:
          packages:
            - gcc-multilib
            - g++-multilib
    - os: linux
-     env: BROTLI_OS=windows BROTLI_ARCH=386 TRIPLET=i686-w64-mingw32 GO_VERSION=go1.8.1
+     env: BROTLI_OS=windows BROTLI_ARCH=386 TRIPLET=i686-w64-mingw32
      addons:
        apt:
          packages:
@@ -49,7 +48,7 @@ matrix:
            - g++-mingw-w64-i686
            - binutils-mingw-w64-i686
    - os: linux
-     env: BROTLI_OS=windows BROTLI_ARCH=amd64 TRIPLET=x86_64-w64-mingw32 GO_VERSION=go1.8.1
+     env: BROTLI_OS=windows BROTLI_ARCH=amd64 TRIPLET=x86_64-w64-mingw32
      addons:
        apt:
          packages:
@@ -66,10 +65,10 @@ before_install:
   - export TRAVIS_BUILD_DIR=${BROTLI_CANONICAL_IMPORT}
 install:
   # install gvm
-  - bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
-  - source /home/travis/.gvm/scripts/gvm
-  - gvm install ${GO_VERSION} -B
-  - gvm use ${GO_VERSION}
+  - if [[ $GO_VERSION ]]; then bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer); fi
+  - if [[ $GO_VERSION ]]; then source /home/travis/.gvm/scripts/gvm; fi
+  - if [[ $GO_VERSION ]]; then gvm install ${GO_VERSION} -B; fi
+  - if [[ $GO_VERSION ]]; then gvm use ${GO_VERSION}; fi
 
   # -d = download only, in some cases we're cross-compiling so we don't want to
   # be pre-compiling them just yet
