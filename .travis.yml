@@ -70,9 +70,10 @@ before_install:
 install:
   # install gvm
   - bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
+  - source /home/travis/.gvm/scripts/gvm
   - gvm install $GO_VERSION -B
   - gvm use $GO_VERSION
-  
+
   # -d = download only, in some cases we're cross-compiling so we don't want to
   # be pre-compiling them just yet
   # -v = verbose, the go tools are disturbingly silent by default
