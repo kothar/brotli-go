@@ -64,6 +64,7 @@ install:
   - if [[ $GO_VERSION ]]; then source /home/travis/.gvm/scripts/gvm; fi
   - if [[ $GO_VERSION ]]; then gvm install ${GO_VERSION} -B; fi
   - if [[ $GO_VERSION ]]; then gvm use ${GO_VERSION}; fi
+  - go version
 
   # -d = download only, in some cases we're cross-compiling so we don't want to
   # be pre-compiling them just yet
@@ -73,7 +74,7 @@ install:
   - go get -u golang.org/x/tools/cmd/goimports
 script:
   # gox lets us cross-compile pretty easily
-  # - go get github.com/mitchellh/gox
+  - go get github.com/mitchellh/gox
   - export OSARCH=$BROTLI_OS/$BROTLI_ARCH
   - if [[ -n $TRIPLET ]]; then export CC=$TRIPLET-gcc; export CXX=$TRIPLET-g++; fi
   # for an ldflags explanation, cf. https://github.com/kothar/brotli-go/issues/1#issuecomment-156091015
@@ -84,4 +85,4 @@ script:
   - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then diff <(golint ./...) <(printf ""); fi
   - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then go test -v -cpu=2 ./...; fi
   - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then go test -v -cpu=1,2,4 -short -race ./...; fi
-  # - (cd gbr && gox -osarch "$OSARCH" -ldflags "$BROTLI_LDFLAGS" -cgo -output="gbr" && file gbr${BROTLI_EXT})
+  - (cd gbr && gox -osarch "$OSARCH" -ldflags "$BROTLI_LDFLAGS" -cgo -output="gbr" && file gbr${BROTLI_EXT})
