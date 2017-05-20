@@ -10,14 +10,12 @@
 # but does not support cgo afaict, so we're only using
 # it to get gox to do our bidding.
 language: go
-go: 1.5.1
+env:
+  - GO_VERSION=go1.8.1 BROTLI_OS=linux BROTLI_ARCH=amd64
+  - GO_VERSION=go1.7.5 BROTLI_OS=linux BROTLI_ARCH=amd64
+  - GO_VERSION=go1.6.4 BROTLI_OS=linux BROTLI_ARCH=amd64
 
 matrix:
-  # I'm not sure why travis insists on running a build with os=linux and an empty
-  # env but if it really wants to, let it, just don't make it fail our builds
-  allow_failures:
-   - os: linux
-     env:
   # A true build matrix would be combinatorial - here we're only interested in
   # a few, specific build configurations.
   include:
@@ -34,9 +32,6 @@ matrix:
          packages:
            - gcc-multilib
            - g++-multilib
-   # binaries produced in this case run natively on the default travis config
-   - os: linux
-     env: BROTLI_OS=linux BROTLI_ARCH=amd64
    - os: linux
      env: BROTLI_OS=windows BROTLI_ARCH=386 TRIPLET=i686-w64-mingw32
      addons:
@@ -64,6 +59,13 @@ before_install:
   - rm -rf ${TRAVIS_BUILD_DIR}
   - export TRAVIS_BUILD_DIR=${BROTLI_CANONICAL_IMPORT}
 install:
+  # install gvm
+  - if [[ $GO_VERSION ]]; then bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer); fi
+  - if [[ $GO_VERSION ]]; then source /home/travis/.gvm/scripts/gvm; fi
+  - if [[ $GO_VERSION ]]; then gvm install ${GO_VERSION} -B; fi
+  - if [[ $GO_VERSION ]]; then gvm use ${GO_VERSION}; fi
+  - go version
+
   # -d = download only, in some cases we're cross-compiling so we don't want to
   # be pre-compiling them just yet
   # -v = verbose, the go tools are disturbingly silent by default
