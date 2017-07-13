@@ -53,6 +53,15 @@ BrotliResult BrotliDecompressBuffer(size_t encoded_size,
                                     size_t* decoded_size,
                                     uint8_t* decoded_buffer);
 
+/* Decompresses the data in |encoded_buffer| into |decoded_buffer| using
+   the supplied dictionary, and sets |*decoded_size| to the decompressed length. */
+BrotliResult BrotliDecompressBufferDict(size_t encoded_size,
+								const uint8_t* encoded_buffer,
+								size_t dict_size,
+								const uint8_t* dict_buffer,
+								size_t* decoded_size,
+								uint8_t* decoded_buffer);
+
 /* Decompresses the data. Supports partial input and output.
 
    Must be called with an allocated input buffer in |*next_in| and an allocated

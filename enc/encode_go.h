@@ -49,6 +49,18 @@ int CBrotliCompressBuffer(CBrotliParams params,
                          size_t* encoded_size,
                          uint8_t* encoded_buffer);
 
+// Compresses the data in input_buffer into encoded_buffer
+// given the supplied dictionary, and sets
+// *encoded_size to the compressed length.
+// Returns 0 if there was an error and 1 otherwise.
+int CBrotliCompressBufferDict(CBrotliParams params,
+                         size_t input_size,
+                         const uint8_t* input_buffer,
+                         size_t dict_size,
+                         const uint8_t* dict_buffer,
+                         size_t* encoded_size,
+                         uint8_t* encoded_buffer);
+
 // Streaming API
 typedef void* CBrotliCompressor;
 

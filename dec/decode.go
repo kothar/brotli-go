@@ -83,6 +83,53 @@ func DecompressBuffer(encodedBuffer []byte, decodedBuffer []byte) ([]byte, error
 	}
 }
 
+// DecompressBuffer decompress a Brotli-encoded buffer. Uses decodedBuffer as the destination buffer unless it is too small,
+// in which case a new buffer is allocated.
+// Returns the slice of the decodedBuffer containing the output, or an error.
+func DecompressBufferDict(encodedBuffer []byte, inputDict []byte, decodedBuffer []byte) ([]byte, error) {
+	encodedLength := len(encodedBuffer)
+	dictLength := len(inputDict)
+	var decodedSize C.size_t
+
+	// If the user has provided a sensibly size buffer, assume they know how long the output should be
+	// Otherwise try to determine the correct length from the input
+	if len(decodedBuffer) < len(encodedBuffer) {
+		success := C.BrotliDecompressedSize(C.size_t(encodedLength), toC(encodedBuffer), &decodedSize)
+		if success != 1 {
+			// We can't know in advance how much buffer to allocate, so we will just have to guess
+			decodedSize = C.size_t(len(encodedBuffer) * 6)
+		}
+
+		if len(decodedBuffer) < int(decodedSize) {
+			decodedBuffer = make([]byte, decodedSize)
+		}
+	}
+
+	// The size of the ouput buffer available
+	decodedLength := C.size_t(len(decodedBuffer))
+
+	result := C.BrotliDecompressBufferDict(
+		C.size_t(encodedLength), toC(encodedBuffer),
+		C.size_t(dictLength), toC(inputDict),
+		&decodedLength, toC(decodedBuffer))
+	switch result {
+	case C.BROTLI_RESULT_SUCCESS:
+		// We're finished
+		return decodedBuffer[0:decodedLength], nil
+	case C.BROTLI_RESULT_NEEDS_MORE_OUTPUT:
+		// We needed more output buffer
+		decodedBuffer = make([]byte, len(decodedBuffer)*2)
+		return DecompressBufferDict(encodedBuffer, inputDict, decodedBuffer)
+	case C.BROTLI_RESULT_ERROR:
+		return nil, errors.New("Brotli decompression error")
+	case C.BROTLI_RESULT_NEEDS_MORE_INPUT:
+		// We can't handle streaming more input results here
+		return nil, errors.New("Brotli decompression error: needs more input")
+	default:
+		return nil, errors.New("Unrecognised Brotli decompression error")
+	}
+}
+
 func toC(array []byte) *C.uint8_t {
 	return (*C.uint8_t)(unsafe.Pointer(&array[0]))
 }
