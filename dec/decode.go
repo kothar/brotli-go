@@ -136,7 +136,7 @@ func (r *BrotliReader) Read(p []byte) (n int, err error) {
 		if r.availableIn > 0 || r.needOutput {
 			// Decompress
 			inputPosition := r.bufferRead - int(r.availableIn)
-			nextIn := unsafe.Pointer(uintptr(0))
+			nextIn := unsafe.Pointer(nil)
 			if r.availableIn > 0 {
 				nextIn = unsafe.Pointer(&r.buffer[inputPosition])
 			}
