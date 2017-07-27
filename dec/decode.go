@@ -83,7 +83,7 @@ func DecompressBuffer(encodedBuffer []byte, decodedBuffer []byte) ([]byte, error
 	}
 }
 
-// DecompressBuffer decompress a Brotli-encoded buffer. Uses decodedBuffer as the destination buffer unless it is too small,
+// DecompressBufferDict decompress a Brotli-encoded buffer. Uses decodedBuffer as the destination buffer unless it is too small,
 // in which case a new buffer is allocated.
 // Returns the slice of the decodedBuffer containing the output, or an error.
 func DecompressBufferDict(encodedBuffer []byte, inputDict []byte, decodedBuffer []byte) ([]byte, error) {
