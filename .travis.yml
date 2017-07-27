@@ -10,10 +10,14 @@
 # but does not support cgo afaict, so we're only using
 # it to get gox to do our bidding.
 language: go
+go: 
+  - 1.8.x
+  - 1.7.x
+  - 1.6.x
 env:
-  - GO_VERSION=go1.8.1 BROTLI_OS=linux BROTLI_ARCH=amd64
-  - GO_VERSION=go1.7.5 BROTLI_OS=linux BROTLI_ARCH=amd64
-  - GO_VERSION=go1.6.4 BROTLI_OS=linux BROTLI_ARCH=amd64
+  - BROTLI_OS=linux BROTLI_ARCH=amd64
+  - BROTLI_OS=linux BROTLI_ARCH=amd64
+  - BROTLI_OS=linux BROTLI_ARCH=amd64
 
 matrix:
   # A true build matrix would be combinatorial - here we're only interested in
@@ -23,9 +27,11 @@ matrix:
    # builds run slower, but it's really handy because cross-compiling OSX
    # binaries got increasingly hard over the years
    - os: osx
+     go: 1.8.x
      env: BROTLI_OS=darwin BROTLI_ARCH=amd64
    # thankfully, ubuntu 12.04 has a multilib variant of gcc readily available
    - os: linux
+     go: 1.8.x
      env: BROTLI_OS=linux BROTLI_ARCH=386
      addons:
        apt:
@@ -33,6 +39,7 @@ matrix:
            - gcc-multilib
            - g++-multilib
    - os: linux
+     go: 1.8.x
      env: BROTLI_OS=windows BROTLI_ARCH=386 TRIPLET=i686-w64-mingw32
      addons:
        apt:
@@ -43,6 +50,7 @@ matrix:
            - g++-mingw-w64-i686
            - binutils-mingw-w64-i686
    - os: linux
+     go: 1.8.x
      env: BROTLI_OS=windows BROTLI_ARCH=amd64 TRIPLET=x86_64-w64-mingw32
      addons:
        apt:
@@ -59,20 +67,8 @@ before_install:
   - rm -rf ${TRAVIS_BUILD_DIR}
   - export TRAVIS_BUILD_DIR=${BROTLI_CANONICAL_IMPORT}
 install:
-  # install gvm
-  - if [[ $GO_VERSION ]]; then bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer); fi
-  - if [[ $GO_VERSION ]]; then source /home/travis/.gvm/scripts/gvm; fi
-  - if [[ $GO_VERSION ]]; then gvm install ${GO_VERSION} -B; fi
-  - if [[ $GO_VERSION ]]; then gvm use ${GO_VERSION}; fi
-  - go version
-
-  # -d = download only, in some cases we're cross-compiling so we don't want to
-  # be pre-compiling them just yet
-  # -v = verbose, the go tools are disturbingly silent by default
-  - go get -d -v ./...
   - go get -u github.com/golang/lint/golint
   - go get -u golang.org/x/tools/cmd/goimports
-script:
   # gox lets us cross-compile pretty easily
   - go get github.com/mitchellh/gox
   - export OSARCH=$BROTLI_OS/$BROTLI_ARCH
@@ -80,6 +76,7 @@ script:
   # for an ldflags explanation, cf. https://github.com/kothar/brotli-go/issues/1#issuecomment-156091015
   # BROTLI_EXT is just handy to be able to call `file` later
   - if [[ $BROTLI_OS = windows ]]; then export BROTLI_LDFLAGS="$BROTLI_LDFLAGS -extldflags \"-Wl,--allow-multiple-definition\""; export BROTLI_EXT=".exe"; fi
+script:
   - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then go vet ./...; fi
   - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then diff <(goimports -d .) <(printf ""); fi
   - if [[ $OSARCH = "linux/amd64" || $OSARCH = "darwin/amd64" ]]; then diff <(golint ./...) <(printf ""); fi
