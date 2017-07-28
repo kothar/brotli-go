@@ -17,6 +17,26 @@ int CBrotliCompressBuffer(CBrotliParams params,
   );
 }
 
+int CBrotliCompressBufferDict(CBrotliParams params,
+                         size_t input_size,
+                         const uint8_t* input_buffer,
+                         size_t dict_size,
+                         const uint8_t* dict_buffer,
+                         size_t* encoded_size,
+                         uint8_t* encoded_buffer) {
+ if (*encoded_size == 0) {
+     // Output buffer needs at least one byte.
+     return 0;
+   }
+   BrotliMemIn in(input_buffer, input_size);
+   BrotliMemOut out(encoded_buffer, *encoded_size);
+   if (!BrotliCompressWithCustomDictionary(dict_size, dict_buffer, *((BrotliParams*) &params), &in, &out)) {
+     return 0;
+   }
+   *encoded_size = out.position();
+   return 1;
+}
+
 CBrotliCompressor CBrotliCompressorNew(CBrotliParams params) {
   BrotliCompressor *ret = new BrotliCompressor(*((BrotliParams*) &params));
   return (CBrotliCompressor) ret;

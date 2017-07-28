@@ -174,6 +174,35 @@ func CompressBuffer(params *BrotliParams, inputBuffer []byte, encodedBuffer []by
 	return encodedBuffer[0:encodedLength], nil
 }
 
+// CompressBufferDict compresses a single block of data using a custom dictionary. It uses encodedBuffer as
+// the destination buffer unless it is too small, in which case a new buffer
+// is allocated.
+// Default parameters are used if params is nil.
+// Returns the slice of the encodedBuffer containing the output, or an error.
+func CompressBufferDict(params *BrotliParams, inputBuffer []byte, inputDict []byte, encodedBuffer []byte) ([]byte, error) {
+	if params == nil {
+		params = NewBrotliParams()
+	}
+
+	dictLength := len(inputDict)
+	inputLength := len(inputBuffer)
+	maxOutSize := params.maxOutputSize(inputLength)
+
+	if len(encodedBuffer) < maxOutSize {
+		encodedBuffer = make([]byte, maxOutSize)
+	}
+
+	encodedLength := C.size_t(len(encodedBuffer))
+	result := C.CBrotliCompressBufferDict(params.c,
+		C.size_t(inputLength), toC(inputBuffer),
+		C.size_t(dictLength), toC(inputDict),
+		&encodedLength, toC(encodedBuffer))
+	if result == 0 {
+		return nil, errBrotliCompression
+	}
+	return encodedBuffer[0:encodedLength], nil
+}
+
 type brotliCompressor struct {
 	c            C.CBrotliCompressor
 	outputBuffer []byte

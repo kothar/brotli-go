@@ -93,6 +93,42 @@ func TestRoundtrip(T *testing.T) {
 	}
 }
 
+// Run roundtrip with a custom dictionary
+func TestRoundtripDict(T *testing.T) {
+	inputs := []string{
+		"testdata/alice29.txt",
+		"testdata/asyoulik.txt",
+		"testdata/lcet10.txt",
+		"testdata/plrabn12.txt",
+		"enc/encode.cc",
+		"shared/dictionary.h",
+		"dec/decode.c",
+	}
+
+	dict := []byte("was beginning to get very tired of sitting by her")
+
+	for _, file := range inputs {
+		var err error
+		var input []byte
+
+		input, err = ioutil.ReadFile(file)
+		if err != nil {
+			T.Error(err)
+		}
+
+		for _, quality := range []int{1, 6, 9, 11} {
+			T.Logf("Roundtrip testing %s at quality %d", file, quality)
+
+			params := enc.NewBrotliParams()
+			params.SetQuality(quality)
+
+			bro := testCompressBufferDict(params, input, dict, T)
+
+			testDecompressBufferDict(input, bro, dict, T)
+		}
+	}
+}
+
 func testCompressBuffer(params *enc.BrotliParams, input []byte, T *testing.T) []byte {
 	// Test buffer compression
 	bro, err := enc.CompressBuffer(params, input, nil)
@@ -107,6 +143,27 @@ func testCompressBuffer(params *enc.BrotliParams, input []byte, T *testing.T) []
 func testDecompressBuffer(input, bro []byte, T *testing.T) {
 	// Buffer decompression
 	unbro, err := dec.DecompressBuffer(bro, nil)
+	if err != nil {
+		T.Error(err)
+	}
+
+	check("Buffer decompress", input, unbro, T)
+}
+
+func testCompressBufferDict(params *enc.BrotliParams, input []byte, inputDict []byte, T *testing.T) []byte {
+	// Test buffer compression
+	bro, err := enc.CompressBufferDict(params, input, inputDict, nil)
+	if err != nil {
+		T.Error(err)
+	}
+	T.Logf("  Compressed from %d to %d bytes, %.1f%%", len(input), len(bro), (float32(len(bro))/float32(len(input)))*100)
+
+	return bro
+}
+
+func testDecompressBufferDict(input, bro []byte, inputDict []byte, T *testing.T) {
+	// Buffer decompression
+	unbro, err := dec.DecompressBufferDict(bro, inputDict, nil)
 	if err != nil {
 		T.Error(err)
 	}
