@@ -292,6 +292,22 @@ func NewBrotliWriter(params *BrotliParams, writer io.Writer) *BrotliWriter {
 	}
 }
 
+// Writes the current contents of the ring buffer to the underlying BrotliCompressor
+func (w *BrotliWriter) flushToCompressor(isLast, forceFlush bool) error {
+	compressedData, err := w.compressor.writeBrotliData(isLast, forceFlush)
+	if err != nil {
+		return err
+	}
+
+	if _, err = w.writer.Write(compressedData); err != nil {
+		return err
+	}
+
+	w.inRingBuffer = 0
+
+	return nil
+}
+
 func (w *BrotliWriter) Write(buffer []byte) (int, error) {
 	comp := w.compressor
 	blockSize := int(comp.getInputBlockSize())
@@ -302,17 +318,10 @@ func (w *BrotliWriter) Write(buffer []byte) (int, error) {
 		comp.copyInputToRingBuffer(buffer[:roomFor])
 		copied += roomFor
 
-		compressedData, err := comp.writeBrotliData(false, false)
-		if err != nil {
+		if err := w.flushToCompressor(false, false); err != nil {
 			return copied, err
 		}
 
-		_, err = w.writer.Write(compressedData)
-		if err != nil {
-			return copied, err
-		}
-
-		w.inRingBuffer = 0
 		buffer = buffer[roomFor:]
 		roomFor = blockSize
 	}
@@ -327,19 +336,20 @@ func (w *BrotliWriter) Write(buffer []byte) (int, error) {
 	return copied, nil
 }
 
-// Close cleans up the resources used by the Brotli encoder for this
-// stream. If the output buffer is an io.Closer, it will also be closed.
-func (w *BrotliWriter) Close() error {
-	compressedData, err := w.compressor.writeBrotliData(true, false)
-	if err != nil {
-		return err
-	}
-	w.compressor.free()
+// Flush sends any pending data immediately to the underlying writer.
+func (w *BrotliWriter) Flush() error {
+	return w.flushToCompressor(false, true)
+}
 
-	_, err = w.writer.Write(compressedData)
-	if err != nil {
+// Close cleans up the resources used by the Brotli encoder for this stream.
+// Any pending data in the write buffer is flushed to the underlying stream.
+// If the output buffer is an io.Closer, it will also be closed.
+func (w *BrotliWriter) Close() error {
+	if err := w.flushToCompressor(true, false); err != nil {
 		return err
 	}
+
+	w.compressor.free()
 
 	if v, ok := w.writer.(io.Closer); ok {
 		return v.Close()
