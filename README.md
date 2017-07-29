@@ -6,6 +6,13 @@
 See <https://github.com/google/brotli> for the upstream C/C++ source, and
 the `VERSION.md` file to find out the currently vendored version.
 
+Official Wrapper
+---
+
+After this project was created, in [March 2017](https://github.com/google/brotli/commit/a657d9969dfb9655f4b483a658ad5da9dda3e52e), the upstream brotli repository has added an [official wrapper for Go](https://github.com/google/brotli/tree/master/go/cbrotli).
+
+One significant difference is that the official wrapper loads the brotli library dynamically, which requires you to install brotli in addition to your Go application. This wrapper links the brotli implementaton into your go code statically. The underlying implementation is the same, so you may prefer one version or the other depending on your use case.
+
 Usage
 ---
 
