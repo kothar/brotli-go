@@ -67,7 +67,7 @@ before_install:
   - rm -rf ${TRAVIS_BUILD_DIR}
   - export TRAVIS_BUILD_DIR=${BROTLI_CANONICAL_IMPORT}
 install:
-  - go get -u github.com/golang/lint/golint
+  - go get -u golang.org/x/lint/golint
   - go get -u golang.org/x/tools/cmd/goimports
   # gox lets us cross-compile pretty easily
   - go get github.com/mitchellh/gox
